@@ -1,14 +1,23 @@
-"""Unit tests for BFS, DFS, and Comparative Traversal Algorithms."""
+"""Unit tests for BFS, DFS, Race, Centrality, and Network Generators."""
 
 import unittest
 from core.graph import Graph
-from core.algorithms import simulate_bfs, simulate_dfs, compare_algorithms, simulate_race
+from core.algorithms import (
+    simulate_bfs,
+    simulate_dfs,
+    compare_algorithms,
+    simulate_race,
+    compute_pagerank,
+    compute_centrality
+)
 from core.presets import (
     create_linear_chain_network,
     create_star_network,
     create_cyclic_network,
     create_disconnected_network,
-    create_financial_panic_network
+    create_financial_panic_network,
+    generate_scale_free_network,
+    generate_small_world_network
 )
 
 
@@ -43,16 +52,12 @@ class TestAlgorithms(unittest.TestCase):
         
         self.assertEqual(len(bfs["reached_nodes"]), 6)
         self.assertEqual(len(dfs["reached_nodes"]), 6)
-        # Verify skip_visited actions occurred
         skip_actions = [s for s in bfs["steps"] if s["action"] == "SKIP_VISITED"]
         self.assertGreater(len(skip_actions), 0)
 
     def test_disconnected_network_unreached(self):
         g = create_disconnected_network()
-        # Starting from Alpha_1 should reach only Alpha nodes (4 nodes),
-        # while Beta (3 nodes) and Isolated (1 node) remain unreached.
         bfs = simulate_bfs(g, "Alpha_1")
-        
         self.assertEqual(bfs["summary"]["infected_count"], 4)
         self.assertEqual(bfs["summary"]["unreached_count"], 4)
         self.assertIn("Isolated_User", bfs["unreached_nodes"])
@@ -80,6 +85,40 @@ class TestAlgorithms(unittest.TestCase):
         self.assertGreater(len(race["steps"]), 0)
         self.assertIn("containment_rate", race["summary"])
         self.assertGreater(len(race["time_series"]), 0)
+
+    def test_centrality_and_super_spreader_detection(self):
+        g = create_star_network()
+        centrality = compute_centrality(g)
+        self.assertIn("top_super_spreaders", centrality)
+        self.assertIn("pagerank_scores", centrality)
+        # Celebrity must be the top super-spreader
+        top_spreader = centrality["top_super_spreaders"][0]
+        self.assertEqual(top_spreader["id"], "Celebrity")
+        self.assertGreater(top_spreader["influence_index"], 50.0)
+
+    def test_ai_skepticism_resistance(self):
+        g = create_financial_panic_network()
+        # Run with low virality 0.35 (SEC_FactCheck has 0.95 skepticism, Market_Journalist has 0.80)
+        bfs = simulate_bfs(g, "Deepfake_Seed", virality=0.35)
+        self.assertIn("resisted_nodes", bfs)
+        self.assertGreater(len(bfs["resisted_nodes"]), 0)
+        # Verify RESISTED_SKEPTIC step was logged
+        resisted_actions = [s for s in bfs["steps"] if s["action"] == "RESISTED_SKEPTIC"]
+        self.assertGreater(len(resisted_actions), 0)
+
+    def test_barabasi_albert_scale_free_network(self):
+        g = generate_scale_free_network(num_nodes=15, m_attach=2)
+        self.assertEqual(g.get_node_count(), 15)
+        self.assertGreaterEqual(g.get_edge_count(), 14)
+        degrees = g.get_degrees()
+        max_deg = max(d["total"] for d in degrees.values())
+        # Scale-free network must have a hub with higher degree than average
+        self.assertGreaterEqual(max_deg, 3)
+
+    def test_watts_strogatz_small_world_network(self):
+        g = generate_small_world_network(num_nodes=15, k=4, beta=0.3)
+        self.assertEqual(g.get_node_count(), 15)
+        self.assertGreaterEqual(g.get_edge_count(), 15)
 
 
 if __name__ == "__main__":

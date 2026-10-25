@@ -24,13 +24,14 @@ class Graph:
         self.adj: Dict[str, List[str]] = {}
         self.nodes: Dict[str, Dict[str, Any]] = {}
 
-    def add_node(self, node_id: str, label: Optional[str] = None, role: str = "Standard User") -> bool:
+    def add_node(self, node_id: str, label: Optional[str] = None, role: str = "Standard User", skepticism: Optional[float] = None) -> bool:
         """Add a new user (vertex) to the social network.
         
         Args:
             node_id: Unique string identifier for the user.
             label: Display name for the user (defaults to node_id if None).
             role: Social role (e.g., 'Influencer', 'Standard User', 'Fact Checker', 'Bot').
+            skepticism: AI resistance threshold (0.0 to 1.0).
             
         Returns:
             bool: True if node was newly added, False if it already existed.
@@ -38,6 +39,20 @@ class Graph:
         node_id = str(node_id).strip()
         if not node_id:
             raise ValueError("Node ID cannot be empty.")
+
+        # Default skepticism based on role if not explicitly provided
+        if skepticism is None:
+            role_lower = (role or "").lower()
+            if "bot" in role_lower:
+                skepticism = 0.05
+            elif "influencer" in role_lower:
+                skepticism = 0.25
+            elif "journalist" in role_lower or "media" in role_lower:
+                skepticism = 0.75
+            elif "fact" in role_lower or "check" in role_lower or "doctor" in role_lower or "physician" in role_lower:
+                skepticism = 0.90
+            else:
+                skepticism = 0.45
             
         if node_id in self.nodes:
             # Update metadata if already present
@@ -45,12 +60,15 @@ class Graph:
                 self.nodes[node_id]["label"] = label
             if role:
                 self.nodes[node_id]["role"] = role
+            if skepticism is not None:
+                self.nodes[node_id]["skepticism"] = float(skepticism)
             return False
 
         self.nodes[node_id] = {
             "id": node_id,
             "label": label if label else node_id,
-            "role": role
+            "role": role,
+            "skepticism": round(float(skepticism), 2)
         }
         self.adj[node_id] = []
         return True
@@ -229,7 +247,8 @@ class Graph:
                 {
                     "id": n_id,
                     "label": meta["label"],
-                    "role": meta.get("role", "Standard User")
+                    "role": meta.get("role", "Standard User"),
+                    "skepticism": meta.get("skepticism", 0.45)
                 }
                 for n_id, meta in self.nodes.items()
             ],
@@ -249,7 +268,12 @@ class Graph:
 
         for n in data.get("nodes", []):
             if isinstance(n, dict):
-                graph.add_node(n["id"], label=n.get("label"), role=n.get("role", "Standard User"))
+                graph.add_node(
+                    n["id"],
+                    label=n.get("label"),
+                    role=n.get("role", "Standard User"),
+                    skepticism=n.get("skepticism")
+                )
             else:
                 graph.add_node(str(n))
 

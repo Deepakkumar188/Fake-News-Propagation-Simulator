@@ -1,7 +1,7 @@
 /**
  * Network Graph Visualization Manager using Vis.js.
  * Enhanced with Neon-Cyber styling, particle-inspired nodes, and dynamic vectors.
- * Supports dynamic Dark / Light theme switching.
+ * Supports dynamic Dark / Light theme switching and PageRank Super-Spreader scaling.
  */
 
 class NetworkVisualizer {
@@ -12,6 +12,8 @@ class NetworkVisualizer {
         this.network = null;
         this.isDirected = false;
         this.currentTheme = 'dark';
+        this.isPageRankMode = false;
+        this.pageRankScores = {};
 
         // Color palettes for Dark and Light themes
         this.palettes = {
@@ -35,6 +37,11 @@ class NetworkVisualizer {
                     background: '#f43f5e',
                     border: '#be123c',
                     highlight: { background: '#fb7185', border: '#f43f5e' }
+                },
+                resisted: {
+                    background: '#d97706',
+                    border: '#b45309',
+                    highlight: { background: '#f59e0b', border: '#d97706' }
                 },
                 inoculated: {
                     background: '#00f2fe',
@@ -70,6 +77,11 @@ class NetworkVisualizer {
                     background: '#e11d48',
                     border: '#9f1239',
                     highlight: { background: '#f43f5e', border: '#e11d48' }
+                },
+                resisted: {
+                    background: '#b45309',
+                    border: '#78350f',
+                    highlight: { background: '#d97706', border: '#b45309' }
                 },
                 inoculated: {
                     background: '#0284c7',
@@ -165,13 +177,15 @@ class NetworkVisualizer {
             }
         });
 
-        // Repaint all nodes with updated font/theme colors
         const currentNodes = this.nodesDataSet.get();
         const updatedNodes = currentNodes.map(n => {
             let stateColor = this.colors.unvisited;
             if (n.state === 'source') stateColor = this.colors.source;
             else if (n.state === 'active') stateColor = this.colors.active;
             else if (n.state === 'infected') stateColor = this.colors.infected;
+            else if (n.state === 'resisted') stateColor = this.colors.resisted;
+            else if (n.state === 'inoculated') stateColor = this.colors.inoculated;
+            else if (n.state === 'debunked') stateColor = this.colors.debunked;
 
             return {
                 id: n.id,
@@ -181,7 +195,6 @@ class NetworkVisualizer {
         });
         this.nodesDataSet.update(updatedNodes);
 
-        // Repaint edges
         const currentEdges = this.edgesDataSet.get();
         const updatedEdges = currentEdges.map(e => ({
             id: e.id,
@@ -193,15 +206,20 @@ class NetworkVisualizer {
     loadGraph(graphData) {
         this.isDirected = graphData.is_directed || false;
         
-        const nodes = (graphData.nodes || []).map(n => ({
-            id: n.id,
-            label: n.label || n.id,
-            title: `Entity: ${n.id}\nRole: ${n.role || 'Standard User'}`,
-            role: n.role || 'Standard User',
-            state: 'unvisited',
-            color: this.colors.unvisited,
-            font: { color: this.colors.fontColor }
-        }));
+        const nodes = (graphData.nodes || []).map(n => {
+            const skep = n.skepticism !== undefined ? n.skepticism : 0.45;
+            return {
+                id: n.id,
+                label: n.label || n.id,
+                title: `Entity: ${n.id}\nRole: ${n.role || 'Standard User'}\nSkepticism Index: ${Math.round(skep * 100)}%`,
+                role: n.role || 'Standard User',
+                skepticism: skep,
+                state: 'unvisited',
+                size: 22,
+                color: this.colors.unvisited,
+                font: { color: this.colors.fontColor }
+            };
+        });
 
         const edges = (graphData.edges || []).map(e => ({
             id: `${e.from}-${e.to}`,
@@ -231,7 +249,8 @@ class NetworkVisualizer {
         const nodes = this.nodesDataSet.get().map(n => ({
             id: n.id,
             label: n.label,
-            role: n.role || 'Standard User'
+            role: n.role || 'Standard User',
+            skepticism: n.skepticism !== undefined ? n.skepticism : 0.45
         }));
 
         const edges = this.edgesDataSet.get().map(e => ({
@@ -246,14 +265,40 @@ class NetworkVisualizer {
         };
     }
 
-    addNode(id, label, role = 'Standard User') {
+    applyPageRankSizing(pagerankMap, isEnabled = true) {
+        this.isPageRankMode = isEnabled;
+        this.pageRankScores = pagerankMap || {};
+
+        const currentNodes = this.nodesDataSet.get();
+        const updates = currentNodes.map(n => {
+            if (!isEnabled) {
+                return {
+                    id: n.id,
+                    size: 22,
+                    borderWidth: 2.5
+                };
+            }
+            const pr = this.pageRankScores[n.id] || 0.1;
+            const scaledSize = Math.round(18 + pr * 26);
+            return {
+                id: n.id,
+                size: scaledSize,
+                borderWidth: pr >= 0.75 ? 4.5 : 2.5
+            };
+        });
+        this.nodesDataSet.update(updates);
+    }
+
+    addNode(id, label, role = 'Standard User', skepticism = 0.45) {
         if (!id || this.nodesDataSet.get(id)) return false;
         this.nodesDataSet.add({
             id: id,
             label: label || id,
-            title: `Entity: ${id}\nRole: ${role}`,
+            title: `Entity: ${id}\nRole: ${role}\nSkepticism Index: ${Math.round(skepticism * 100)}%`,
             role: role,
+            skepticism: skepticism,
             state: 'unvisited',
+            size: 22,
             color: this.colors.unvisited,
             font: { color: this.colors.fontColor }
         });
@@ -310,14 +355,20 @@ class NetworkVisualizer {
         if (!nodeId || !this.colors[state]) return;
         const node = this.nodesDataSet.get(nodeId);
         if (node) {
+            let baseSize = 22;
+            if (this.isPageRankMode && this.pageRankScores[nodeId]) {
+                baseSize = Math.round(18 + this.pageRankScores[nodeId] * 26);
+            }
+            const activeSize = state === 'active' ? baseSize + 6 : (state === 'source' ? baseSize + 4 : baseSize);
+
             this.nodesDataSet.update({
                 id: nodeId,
                 state: state,
                 color: this.colors[state],
-                size: state === 'active' ? 28 : (state === 'source' ? 26 : 22),
+                size: activeSize,
                 shadow: state === 'active' || state === 'source' || state === 'infected' ?
                     { enabled: true, color: this.colors[state].background, size: 14 } :
-                    { enabled: true, color: 'rgba(0,0,0,0.5)', size: 8 }
+                    (state === 'resisted' ? { enabled: true, color: '#d97706', size: 12 } : { enabled: true, color: 'rgba(0,0,0,0.5)', size: 8 })
             });
         }
     }
@@ -339,14 +390,20 @@ class NetworkVisualizer {
     }
 
     resetStyles() {
-        const allNodes = this.nodesDataSet.get().map(n => ({
-            id: n.id,
-            state: 'unvisited',
-            color: this.colors.unvisited,
-            size: 22,
-            font: { color: this.colors.fontColor },
-            shadow: { enabled: true, color: 'rgba(0,0,0,0.5)', size: 8 }
-        }));
+        const allNodes = this.nodesDataSet.get().map(n => {
+            let baseSize = 22;
+            if (this.isPageRankMode && this.pageRankScores[n.id]) {
+                baseSize = Math.round(18 + this.pageRankScores[n.id] * 26);
+            }
+            return {
+                id: n.id,
+                state: 'unvisited',
+                color: this.colors.unvisited,
+                size: baseSize,
+                font: { color: this.colors.fontColor },
+                shadow: { enabled: true, color: 'rgba(0,0,0,0.5)', size: 8 }
+            };
+        });
         this.nodesDataSet.update(allNodes);
 
         const allEdges = this.edgesDataSet.get().map(e => ({

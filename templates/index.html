@@ -35,7 +35,7 @@
                 <div class="brand-text">
                     <div class="brand-name-row">
                         <span class="brand-name">INFOCASCADE</span>
-                        <span class="brand-version">v2.7 ENTERPRISE</span>
+                        <span class="brand-version">v2.8 ENTERPRISE</span>
                     </div>
                     <p class="brand-tagline">Real-Time Social Network Misinformation Diffusion &amp; Defense Simulator</p>
                 </div>
@@ -53,10 +53,22 @@
                         <span class="tag-val text-emerald">Sparse Adjacency List</span>
                     </div>
                     <div class="sys-tag">
-                        <span class="tag-label">COMPLEXITY</span>
-                        <span class="tag-val text-violet">&Omicron;(V + E)</span>
+                        <span class="tag-label">PAGERANK</span>
+                        <span class="tag-val text-amber">&alpha; = 0.85 Power Iter</span>
                     </div>
                 </div>
+
+                <!-- Super-Spreader Highlight Toggle -->
+                <button id="btn-toggle-pagerank" class="theme-switch-btn btn-spreader-toggle" title="Super-Spreader Analysis (PageRank & Degree Centrality)">
+                    <span class="theme-icon">👑</span>
+                    <span class="theme-text">Super-Spreaders</span>
+                </button>
+
+                <!-- One-Click Forensic Dossier Export Button -->
+                <button id="btn-export-dossier" class="theme-switch-btn btn-export-highlight" title="Export Forensic Dossier (Printable Audit Report)">
+                    <span class="theme-icon">📄</span>
+                    <span class="theme-text">Forensic Dossier</span>
+                </button>
 
                 <!-- Theme Switcher Button (Dark / Light Mode) -->
                 <button id="theme-toggle-btn" class="theme-switch-btn" title="Toggle Light / Dark Mode">
@@ -117,10 +129,10 @@
                     </div>
                 </div>
 
-                <!-- Real-World Preset Scenarios -->
+                <!-- Real-World Preset Scenarios & Complex Generators -->
                 <div class="control-pod">
                     <label class="pod-label" for="preset-select">
-                        <span class="pod-icon">🌐</span> Real-World Scenarios
+                        <span class="pod-icon">🌐</span> Network Topologies
                     </label>
                     <div class="select-wrapper">
                         <select id="preset-select" class="custom-select">
@@ -129,10 +141,25 @@
                             <option value="health_rumor">Case 3: Medical Misinformation &amp; Fact-Checkers</option>
                             <option value="botnet_campaign">Case 4: Coordinated Botnet Astroturfing (Star)</option>
                             <option value="whatsapp_chain">Case 5: Viral WhatsApp Forwarding Chain (Directed)</option>
+                            <option value="scale_free">⚡ Gen: Scale-Free Network (Barabási-Albert)</option>
+                            <option value="small_world">⚡ Gen: Small-World Network (Watts-Strogatz)</option>
                             <option value="cyclic">Case 6: Cyclic Rumor Ring with Cross-Ties</option>
                             <option value="disconnected">Case 7: Segmented Closed Communities</option>
                             <option value="default">Case 8: Mixed Heterogeneous Social Network</option>
                         </select>
+                    </div>
+                </div>
+
+                <!-- Rumor Persuasiveness / Virality Slider (Feature 2) -->
+                <div class="control-pod virality-pod">
+                    <div class="speed-header">
+                        <label class="pod-label" for="virality-slider">
+                            <span class="pod-icon">🧬</span> Rumor Virality
+                        </label>
+                        <span id="virality-val" class="speed-readout text-amber">75%</span>
+                    </div>
+                    <div class="slider-wrapper">
+                        <input type="range" id="virality-slider" min="10" max="100" step="5" value="75" class="neon-slider slider-amber">
                     </div>
                 </div>
 
@@ -188,6 +215,7 @@
                             <div class="legend-chip"><span class="chip-color color-source"></span> Rumor Seed</div>
                             <div class="legend-chip"><span class="chip-color color-active"></span> In-Transit</div>
                             <div class="legend-chip"><span class="chip-color color-infected"></span> Infected</div>
+                            <div class="legend-chip"><span class="chip-color color-resisted"></span> Resisted (Skeptic)</div>
                             <div class="legend-chip"><span class="chip-color color-inoculated"></span> Inoculated (Truth)</div>
                             <div class="legend-chip"><span class="chip-color color-debunked"></span> Debunked</div>
                             <div class="legend-chip"><span class="chip-color color-unvisited"></span> Unreached</div>
@@ -304,15 +332,19 @@
                             <div class="metrics-dashboard-grid">
                                 <div class="stat-card">
                                     <div class="stat-num text-slate" id="stat-total-nodes">0</div>
-                                    <div class="stat-desc">Network Entities (V)</div>
+                                    <div class="stat-desc">Entities (V)</div>
                                 </div>
                                 <div class="stat-card">
                                     <div class="stat-num text-slate" id="stat-total-edges">0</div>
-                                    <div class="stat-desc">Active Vectors (E)</div>
+                                    <div class="stat-desc">Vectors (E)</div>
                                 </div>
                                 <div class="stat-card glow-card-infected">
                                     <div class="stat-num text-rose" id="stat-reached-nodes">0</div>
-                                    <div class="stat-desc">Infected (Rumor)</div>
+                                    <div class="stat-desc">Infected</div>
+                                </div>
+                                <div class="stat-card glow-card-resisted">
+                                    <div class="stat-num text-amber" id="stat-resisted-nodes">0</div>
+                                    <div class="stat-desc">Resisted (Skeptic)</div>
                                 </div>
                                 <div class="stat-card glow-card-inoculated">
                                     <div class="stat-num text-cyan" id="stat-inoculated-nodes">0</div>
@@ -320,7 +352,7 @@
                                 </div>
                                 <div class="stat-card glow-card-debunked">
                                     <div class="stat-num text-violet" id="stat-debunked-nodes">0</div>
-                                    <div class="stat-desc">Debunked (Neutral)</div>
+                                    <div class="stat-desc">Debunked</div>
                                 </div>
                                 <div class="stat-card">
                                     <div class="stat-num text-emerald" id="stat-unreached-nodes">0</div>
@@ -456,11 +488,146 @@
                                     halting the viral cascade before critical saturation is reached.
                                 </p>
                             </section>
+
+                            <section class="theory-card">
+                                <h4>5. Super-Spreader PageRank &amp; Preferential Attachment</h4>
+                                <p>
+                                    The PageRank algorithm models influence via random walks with restart probability $\alpha = 0.85$.
+                                    In Barabási-Albert scale-free networks, preferential attachment produces hub entities that serve as super-spreaders, 
+                                    enabling rumors to achieve epidemic threshold significantly faster.
+                                </p>
+                            </section>
                         </div>
                     </div>
                 </div>
             </aside>
         </main>
+    </div>
+
+    <!-- FORENSIC INTELLIGENCE REPORT MODAL -->
+    <div id="dossier-modal" class="dossier-modal-backdrop" style="display: none;">
+        <div class="dossier-modal-container">
+            <div class="dossier-modal-actions no-print">
+                <div class="dossier-modal-title-bar">
+                    <span class="modal-badge">INTELLIGENCE DOSSIER</span>
+                    <span class="modal-case-tag" id="dossier-case-tag">INCIDENT #CAS-8842</span>
+                </div>
+                <div class="modal-btn-group">
+                    <button id="btn-print-dossier" class="ctrl-btn btn-glow-primary">
+                        <span class="icon">🖨️</span> Print / Save PDF
+                    </button>
+                    <button id="btn-download-json" class="ctrl-btn btn-glass">
+                        <span class="icon">📥</span> Export JSON
+                    </button>
+                    <button id="btn-close-dossier" class="ctrl-btn btn-rose">
+                        <span class="icon">✕</span> Close
+                    </button>
+                </div>
+            </div>
+
+            <!-- Printable Document Area -->
+            <div class="printable-dossier-sheet" id="printable-sheet">
+                <div class="dossier-header">
+                    <div class="dossier-emblem-row">
+                        <div class="dossier-mark">INFOCASCADE FORENSIC INTELLIGENCE DIVISION</div>
+                        <div class="dossier-classification">LEVEL-3 CLASSIFIED // AUDIT REPORT</div>
+                    </div>
+                    <h1 class="dossier-headline">DISINFORMATION DIFFUSION &amp; NETWORK AUDIT DOSSIER</h1>
+                    <div class="dossier-meta-grid">
+                        <div class="meta-item"><span class="meta-k">TIMESTAMP:</span> <span class="meta-v" id="dossier-timestamp">-</span></div>
+                        <div class="meta-item"><span class="meta-k">INCIDENT ID:</span> <span class="meta-v" id="dossier-id">CAS-8842-X</span></div>
+                        <div class="meta-item"><span class="meta-k">TOPOLOGY CASE:</span> <span class="meta-v" id="dossier-topology">-</span></div>
+                        <div class="meta-item"><span class="meta-k">DISSEMINATION MODEL:</span> <span class="meta-v" id="dossier-algorithm">-</span></div>
+                        <div class="meta-item"><span class="meta-k">PATIENT ZERO (SEED):</span> <span class="meta-v" id="dossier-source">-</span></div>
+                        <div class="meta-item"><span class="meta-k">VIRALITY COEFFICIENT:</span> <span class="meta-v" id="dossier-virality">-</span></div>
+                    </div>
+                </div>
+
+                <!-- Executive Summary Cards -->
+                <div class="dossier-section">
+                    <h2 class="section-title">1. EXECUTIVE INCIDENT SUMMARY</h2>
+                    <div class="dossier-summary-grid">
+                        <div class="dossier-stat-tile">
+                            <div class="tile-val" id="dossier-total-v">0</div>
+                            <div class="tile-label">TOTAL NETWORK ENTITIES</div>
+                        </div>
+                        <div class="dossier-stat-tile tile-danger">
+                            <div class="tile-val" id="dossier-compromised-v">0</div>
+                            <div class="tile-label">COMPROMISED ENTITIES</div>
+                        </div>
+                        <div class="dossier-stat-tile tile-warning">
+                            <div class="tile-val" id="dossier-resisted-v">0</div>
+                            <div class="tile-label">SKEPTIC RESISTANCE</div>
+                        </div>
+                        <div class="dossier-stat-tile tile-success">
+                            <div class="tile-val" id="dossier-unreached-v">0</div>
+                            <div class="tile-label">CONTAINED / UNREACHED</div>
+                        </div>
+                        <div class="dossier-stat-tile">
+                            <div class="tile-val" id="dossier-depth-v">0</div>
+                            <div class="tile-label">MAX WAVE DEPTH (HOPS)</div>
+                        </div>
+                        <div class="dossier-stat-tile">
+                            <div class="tile-val" id="dossier-reach-v">0%</div>
+                            <div class="tile-label">SATURATION PERCENTAGE</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Super-Spreader Ranking Table -->
+                <div class="dossier-section">
+                    <h2 class="section-title">2. SUPER-SPREADER &amp; INFLUENCE CENTRALITY MATRIX (PAGERANK)</h2>
+                    <p class="section-desc">Identified through power-iteration PageRank algorithm (&alpha; = 0.85) combined with normalized degree connectivity.</p>
+                    <table class="dossier-table">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Entity Identifier</th>
+                                <th>Network Role</th>
+                                <th>Degree (Vectors)</th>
+                                <th>PageRank Score</th>
+                                <th>Influence Index</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dossier-spreaders-tbody">
+                            <!-- Dynamic rows -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Step-by-Step Forensic Transmission Log -->
+                <div class="dossier-section">
+                    <h2 class="section-title">3. CHRONOLOGICAL DISSEMINATION TIMELINE</h2>
+                    <p class="section-desc">Step-by-step state transitions recorded across memory registers and network vectors.</p>
+                    <table class="dossier-table dossier-timeline-table">
+                        <thead>
+                            <tr>
+                                <th>Step</th>
+                                <th>Event Action</th>
+                                <th>Source / Target Vector</th>
+                                <th>Memory Register State</th>
+                                <th>Operational Assessment</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dossier-timeline-tbody">
+                            <!-- Dynamic steps -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Sign-off block -->
+                <div class="dossier-signoff">
+                    <div class="signoff-col">
+                        <div class="signoff-line"></div>
+                        <div class="signoff-label">CHIEF INTELLIGENCE ANALYST</div>
+                    </div>
+                    <div class="signoff-col">
+                        <div class="signoff-line"></div>
+                        <div class="signoff-label">DATA STRUCTURES &amp; ALGORITHMS VERIFICATION</div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- SCRIPTS -->

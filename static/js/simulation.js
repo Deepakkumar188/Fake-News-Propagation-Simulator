@@ -1,6 +1,7 @@
 /**
  * Step-by-Step Simulation Playback Controller.
  * Dual-Wave (Truth vs Rumor) & S-Curve Time-Series Chart.js integration.
+ * Handles AI Skepticism resistance state transitions.
  */
 
 class SimulationController {
@@ -14,6 +15,7 @@ class SimulationController {
         this.timer = null;
         this.speed = 600;
         this.chart = null;
+        this.lastResult = null;
 
         // UI Element References
         this.btnStart = document.getElementById('btn-start');
@@ -30,6 +32,7 @@ class SimulationController {
         this.statTotalNodes = document.getElementById('stat-total-nodes');
         this.statTotalEdges = document.getElementById('stat-total-edges');
         this.statReached = document.getElementById('stat-reached-nodes');
+        this.statResisted = document.getElementById('stat-resisted-nodes');
         this.statInoculated = document.getElementById('stat-inoculated-nodes');
         this.statDebunked = document.getElementById('stat-debunked-nodes');
         this.statUnreached = document.getElementById('stat-unreached-nodes');
@@ -126,6 +129,7 @@ class SimulationController {
 
     loadSimulation(result) {
         this.pause();
+        this.lastResult = result;
         this.steps = result.steps || [];
         this.currentStepIndex = -1;
         this.algorithm = result.algorithm;
@@ -146,6 +150,7 @@ class SimulationController {
         this.statTotalNodes.textContent = totalNodes;
         this.statTotalEdges.textContent = totalEdges;
         this.statReached.textContent = '0';
+        if (this.statResisted) this.statResisted.textContent = '0';
         if (this.statInoculated) this.statInoculated.textContent = '0';
         if (this.statDebunked) this.statDebunked.textContent = '0';
         this.statUnreached.textContent = totalNodes;
@@ -231,6 +236,7 @@ class SimulationController {
         if (this.factSource) this.network.setNodeState(this.factSource, 'inoculated');
         this.dsVis.clear();
         this.statReached.textContent = '0';
+        if (this.statResisted) this.statResisted.textContent = '0';
         if (this.statInoculated) this.statInoculated.textContent = '0';
         if (this.statDebunked) this.statDebunked.textContent = '0';
         this.statUnreached.textContent = this.statTotalNodes.textContent;
@@ -266,6 +272,7 @@ class SimulationController {
             (step.debunked_nodes || []).forEach(n => this.network.setNodeState(n, 'debunked'));
         } else {
             (step.visited_nodes || []).forEach(n => this.network.setNodeState(n, 'infected'));
+            (step.resisted_nodes || []).forEach(n => this.network.setNodeState(n, 'resisted'));
         }
 
         // Always highlight primary rumor source
@@ -280,6 +287,9 @@ class SimulationController {
         }
         if (step.neighbor_node && (step.action === 'DISCOVER_NEW' || step.action === 'RUMOR_SPREAD')) {
             this.network.setNodeState(step.neighbor_node, 'active');
+        }
+        if (step.neighbor_node && step.action === 'RESISTED_SKEPTIC') {
+            this.network.setNodeState(step.neighbor_node, 'resisted');
         }
 
         // Active edge
@@ -304,6 +314,7 @@ class SimulationController {
             const safeCount = Math.max(0, total - infCount - inocCount - debCount);
 
             this.statReached.textContent = infCount;
+            if (this.statResisted) this.statResisted.textContent = '0';
             if (this.statInoculated) this.statInoculated.textContent = inocCount;
             if (this.statDebunked) this.statDebunked.textContent = debCount;
             this.statUnreached.textContent = safeCount;
@@ -312,7 +323,10 @@ class SimulationController {
             this.progressBar.style.width = `${reachPct}%`;
             this.reachPctLabel.textContent = `${reachPct}%`;
         } else {
-            this.statReached.textContent = stats.reached_count || (step.visited_nodes || []).length;
+            const reached = stats.reached_count || (step.visited_nodes || []).length;
+            const resisted = (step.resisted_nodes || []).length;
+            this.statReached.textContent = reached;
+            if (this.statResisted) this.statResisted.textContent = resisted;
             this.statUnreached.textContent = stats.unreached_count || 0;
             const reachPct = stats.reach_percentage || 0;
             this.progressBar.style.width = `${reachPct}%`;
@@ -345,7 +359,6 @@ class SimulationController {
                 this.chart.data.datasets[1].data = factData;
                 this.chart.data.datasets[2].data = debunkData;
             } else {
-                // BFS/DFS standard infection curve
                 const currentVisited = (step.visited_nodes || []).length;
                 this.chart.data.labels.push(this.currentStepIndex + 1);
                 this.chart.data.datasets[0].data.push(currentVisited);

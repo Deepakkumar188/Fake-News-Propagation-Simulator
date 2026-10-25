@@ -1,141 +1,160 @@
-# Fake News Propagation Simulator
+# INFOCASCADE // Fake News Propagation & Network Diffusion Simulator
+**Enterprise v2.8** | Real-Time Misinformation Diffusion, Counter-Disinformation Defense & Network Forensics Platform
 
-An interactive simulation and visualization platform modeling the diffusion of misinformation across social networks using fundamental Graph Data Structures and Graph Traversal Algorithms (**Breadth-First Search** and **Depth-First Search**).
-
----
-
-## 1. Project Overview & Motivation
-
-* **Domain:** Social Network Analysis & Algorithmic Diffusion Dynamics
-* **Core DSA Concepts:** Graph Theory, Adjacency Lists, Breadth-First Search (BFS), Depth-First Search (DFS), FIFO Queue (`collections.deque`), LIFO Stack, Visited Sets, Cycle Trapping, and Connected Components.
-* **Core Insight:** In a networked society, information (or misinformation) does not spread randomly; it cascades along network edges.
-  - **BFS** models **viral mass broadcast** (level-by-level concentric rings).
-  - **DFS** models **targeted whisper chains** (deep penetration into a single branch before backtracking).
+[![Tests](https://img.shields.io/badge/Unit%20Tests-18%20Passing-10b981?style=flat-square)](tests/)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-00f2fe?style=flat-square)](https://www.python.org/)
+[![Flask](https://img.shields.io/badge/Flask-3.0%2B-f43f5e?style=flat-square)](https://flask.palletsprojects.com/)
+[![Complexity](https://img.shields.io/badge/Complexity-%CE%9F(V%20%2B%20E)-8b5cf6?style=flat-square)](#algorithmic-complexity-analysis)
 
 ---
 
-## 2. System Architecture & Features
+## 1. Project Overview & Core Insight
+
+**INFOCASCADE** models how misinformation, rumors, and truth propagate through modern social networks using fundamental Graph Theory, Data Structures, and Algorithmic Dynamics.
+
+* **Mass Viral Diffusion (BFS):** Models omnidirectional broadcast wavefronts radiating hop-by-hop across concentric levels using a **FIFO Queue** (`collections.deque`), guaranteeing minimum hop distance.
+* **Targeted Whisper Cascades (DFS):** Models deep personal echo chains plunging into downstream branches using a **LIFO Stack** before backtracking upon encountering cycle traps or dead-ends.
+* **Dual-Wave Counter Defense (Race Mode):** Simulates real-time multi-source races between rumor propagation and verification bureau counter-evidence.
+* **Super-Spreader PageRank Centrality:** Power-iteration eigenvector influence calculation with damping factor $\alpha = 0.85$ to detect and visually scale critical transmission hubs.
+* **AI Skepticism Thresholds:** Entity-level skepticism modeling where nodes resist infection if node skepticism exceeds rumor virality ($S_u > V$).
+
+---
+
+## 2. Advanced Feature Suite
+
+### 👑 1. Super-Spreader Detection (PageRank & Centrality Analysis)
+- Computes **PageRank** ($\alpha = 0.85$, 35 power iterations) and normalized degree connectivity for every entity.
+- Generates an **Influence / Vulnerability Index** $(0 - 100)$.
+- **Dynamic Node Sizing:** High-influence accounts dynamically scale from $18\text{px}$ up to $44\text{px}$ with glowing amber borders on the interactive canvas.
+
+### 🧬 2. AI Susceptibility & Skepticism Threshold Modeling
+- Interactive **Rumor Virality Slider** ($10\% - 100\%$).
+- Nodes possess individual skepticism indices $[0.0, 1.0]$.
+- When virality falls below an entity's skepticism, propagation is rejected, logging a `RESISTED_SKEPTIC` defense event and turning the entity into an amber shield node.
+
+### ⚡ 3. Dynamic Complex Network Generators
+- **Barabási–Albert Scale-Free Generator:** Dynamically creates power-law degree networks with preferential attachment (rich-get-richer dynamics), demonstrating how targeting hubs collapses cascades.
+- **Watts–Strogatz Small-World Generator:** Synthesizes networks with high clustering coefficients and short path lengths (Six Degrees of Separation effect).
+
+### 📄 4. One-Click Forensic Intelligence Dossier Export
+- Generates an executive, printable incident audit report with a single click.
+- Features **Classification Banner**, **Executive Statistics Grid**, **Top Super-Spreader Table**, and **Step-by-Step Chronological Vector Trace**.
+- Clean `@media print` layout engineered for physical paper and PDF generation.
+- **Export JSON Evidence:** Downloadable structured telemetry log.
+
+### 🌓 5. Dual-Theme Interface & Live Temporal S-Curve
+- Seamless instant toggle between **Cyber-Intelligence Dark Mode** and **Crisp Light Mode**.
+- Integrated **Chart.js** real-time temporal diffusion curve (S-Curve) plotting infected, inoculated, and debunked entities over time.
+
+---
+
+## 3. System Architecture
 
 ```
 +-----------------------------------------------------------------------------------------+
 |                                    BROWSER CLIENT                                       |
-|  [ vis.js Network Canvas ]  <--->  [ Simulation Controller ]  <--->  [ Queue/Stack Vis ] |
-|            ^                                     ^                                      |
-+------------|-------------------------------------|--------------------------------------+
-             | (User Interactions)                 | (HTTP REST JSON Stream)
-             v                                     v
+|  [ vis.js Network Canvas ]  <--->  [ Simulation Controller ]  <--->  [ Chart.js S-Curve ]|
+|  [ PageRank Node Sizer ]   <--->  [ FIFO / LIFO Buffers ]    <--->  [ Printable Dossier ]|
++--------------------------------------------|--------------------------------------------+
+                                             | (REST JSON API)
+                                             v
 +-----------------------------------------------------------------------------------------+
 |                                  FLASK BACKEND ENGINE                                   |
-|   /api/simulate (BFS/DFS)  |  /api/compare (Side-by-Side)  |  /api/preset/<id> (Catalog) |
-|                                          |                                              |
-|                                          v                                              |
-|                      [ core/graph.py : Adjacency List ]                                 |
-|                      [ core/algorithms.py : Step Recorder ]                             |
+|   /api/simulate (BFS/DFS + Virality)  |  /api/simulate/race (Multi-Source Defense)      |
+|   /api/analytics/centrality (PageRank)|  /api/presets (Case Studies & Complex Gen)      |
+|                                            |                                            |
+|                                            v                                            |
+|                        [ core/graph.py : Adjacency List ]                               |
+|                        [ core/algorithms.py : Traversal & Centrality ]                  |
+|                        [ core/presets.py : Topologies & Complex Graphs ]                |
 +-----------------------------------------------------------------------------------------+
 ```
 
-### Key Features
-1. **Interactive Network Canvas:** Force-directed node layout (vis.js), draggable users, dynamic edge links.
-2. **Step-by-Step Time-Travel Playback:** Play, Pause, Step Next, Step Prev, Speed Slider (150ms - 1800ms), and Reset.
-3. **Live Data Structure Inspector:** Visible physical representation of the **FIFO Queue** (with FRONT and REAR pointers) or **LIFO Stack** (with TOP pointer) pushing and popping elements in real time.
-4. **Pedagogical Step Explanations:** Real-time plain-English commentary for every atomic step (Enqueue, Dequeue, Visit, Cycle Skip, Backtrack).
-5. **Pre-Configured Educational Topologies:**
-   - *Viral Influencer (Star Topology)*: Demonstrates immediate BFS fan-out.
-   - *Echo Chambers & Bridge*: Shows information bottlenecking between polarized communities.
-   - *Linear Whisper Chain*: Shows where BFS and DFS produce identical sequences.
-   - *Cyclic Gossip Ring*: Demonstrates cycle prevention and cross-edges.
-   - *Disconnected Communities*: Demonstrates unreached vertices and isolated subgraphs.
-6. **BFS vs DFS Comparative Analysis:** Side-by-side metric table showing total steps, peak queue width vs peak stack depth, shortest-hop accuracy, and traversal orders.
-7. **Graph Editor:** Add users, assign social roles (Influencer, Journalist, Fact-Checker, Bot), connect edges, delete nodes.
+---
+
+## 4. Algorithmic Complexity
+
+| Component | Time Complexity | Auxiliary Space Complexity | Data Structure |
+| :--- | :--- | :--- | :--- |
+| **BFS Traversal** | $\mathcal{O}(V + E)$ | $\mathcal{O}(V)$ | FIFO Queue (`collections.deque`) |
+| **DFS Traversal** | $\mathcal{O}(V + E)$ | $\mathcal{O}(V)$ | LIFO Stack (`list`) |
+| **Race Traversal** | $\mathcal{O}(V + E)$ | $\mathcal{O}(V)$ | Dual FIFO Wavefronts |
+| **PageRank Power Iteration** | $\mathcal{O}(k \cdot (V + E))$ | $\mathcal{O}(V)$ | Vector Float Register ($k = 35$) |
+| **Graph Adjacency Storage** | $\mathcal{O}(1)$ edge lookup | $\mathcal{O}(V + E)$ | Sparse Hash Map of Hash Sets |
 
 ---
 
-## 3. Directory Structure
+## 5. Directory Structure
 
 ```
 fake_news_simulator/
 ├── core/
 │   ├── __init__.py
-│   ├── graph.py             # Adjacency List Graph representation & graph metrics
-│   ├── algorithms.py        # BFS, DFS simulation engines with micro-step logging
-│   └── presets.py           # Pre-built benchmark social topologies
+│   ├── graph.py             # Sparse Adjacency List graph representation
+│   ├── algorithms.py        # BFS, DFS, Race, PageRank & Centrality algorithms
+│   └── presets.py           # Real-world case studies & complex network generators
 ├── static/
 │   ├── css/
-│   │   └── style.css        # High-contrast modern academic dark theme
+│   │   └── style.css        # Dual-theme cyber styles & @media print stylesheet
 │   └── js/
-│       ├── network.js       # vis.js graph visualizer & state styler
-│       ├── data_structures.js # Visualizer for FIFO Queue and LIFO Stack
-│       ├── simulation.js    # Simulation playback state machine
-│       └── app.js           # UI dispatcher & API bridge
+│       ├── network.js       # vis.js graph manager & PageRank dynamic sizer
+│       ├── data_structures.js # FIFO Queue & LIFO Stack physical memory visualizer
+│       ├── simulation.js    # Simulation playback state machine & S-Curve Chart.js
+│       └── app.js           # UI dispatcher, Virality slider & Dossier modal
 ├── templates/
-│   └── index.html           # Single-page simulation dashboard
+│   └── index.html           # Command deck, network canvas & forensic dossier modal
 ├── tests/
-│   ├── test_graph.py        # 7 unit tests for Graph methods
-│   └── test_algorithms.py   # 6 unit tests for BFS, DFS, cycles, disconnected
-├── app.py                   # Flask server entrypoint (port 5000)
+│   ├── test_graph.py        # 7 unit tests for graph structures
+│   └── test_algorithms.py   # 11 unit tests for BFS, DFS, Race, PageRank, and Generators
+├── app.py                   # Flask REST server
 ├── requirements.txt         # Minimal dependency: Flask>=3.0.0
-└── README.md                # Project documentation & run guide
+└── README.md                # Documentation & quickstart guide
 ```
 
 ---
 
-## 4. Algorithmic Complexity Analysis
-
-### Time Complexity: $\mathcal{O}(V + E)$
-- **Vertex Operations:** Every reachable vertex is enqueued/pushed once and dequeued/popped once: $\mathcal{O}(V)$.
-- **Edge Operations:** For an Adjacency List, each edge $(u, v)$ is traversed when inspecting $\text{Adj}[u]$:
-  $$\sum_{u \in V} \text{deg}(u) \le 2E \implies \mathcal{O}(E)$$
-  Total time is strictly bounded by $\mathcal{O}(V + E)$.
-
-### Space Complexity: $\mathcal{O}(V)$
-- **Adjacency List:** $\mathcal{O}(V + E)$
-- **Auxiliary Traversal Memory:** $\mathcal{O}(V)$ for the `queue` (BFS) or `stack` (DFS), plus $\mathcal{O}(V)$ for the `visited` set and `levels` dictionary.
-
----
-
-## 5. Setup and Execution (Windows & VS Code)
+## 6. Quickstart Guide
 
 ### Prerequisites
-- Python 3.10+ installed
-- Web browser (Chrome, Edge, Firefox)
+- Python 3.10 or higher
+- Modern web browser (Chrome, Edge, Firefox, Safari)
 
-### Step 1: Open in VS Code
-Open the project directory in VS Code:
-```powershell
-cd "C:\Users\Deepak Kumar\.gemini\antigravity\scratch\fake_news_simulator"
-code .
-```
+### Installation & Run
 
-### Step 2: (Optional) Create & Activate Virtual Environment
-```powershell
-python -m venv venv
-.\venv\Scripts\Activate.ps1
-```
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/Deepakkumar188/Fake-News-Propagation-Simulator.git
+   cd Fake-News-Propagation-Simulator
+   ```
 
-### Step 3: Install Dependencies
-```powershell
-pip install -r requirements.txt
-```
+2. **Install dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-### Step 4: Run the Unit Test Suite
-Verify that all 13 core DSA tests pass:
-```powershell
-python -m unittest discover tests
-```
+3. **Execute Unit Tests (18 passing):**
+   ```bash
+   python -m unittest discover tests
+   ```
 
-### Step 5: Start the Application Server
-```powershell
-python app.py
-```
-Output:
-```
- * Serving Flask app 'app'
- * Debug mode: on
- * Running on http://127.0.0.1:5000
-```
+4. **Launch the Simulation Dashboard:**
+   ```bash
+   python app.py
+   ```
 
-### Step 6: Open in Browser
-Open your browser and navigate to:
-```
-http://127.0.0.1:5000
-```
+5. **Open in Browser:**
+   Navigate to [http://127.0.0.1:5000](http://127.0.0.1:5000).
+
+---
+
+## 7. Real-World Case Studies Included
+
+1. **Case 1: Deepfake Financial Market Panic:** Algorithmic trading bots scrape synthetic videos and panic-dump assets before SEC verification.
+2. **Case 2: Polarized Political Echo Chambers:** Disinformation trapped in partisan clusters bridged by undecided swing voters.
+3. **Case 3: Medical Misinformation:** Unverified cures in private chat groups intercepted by certified physicians.
+4. **Case 4: Coordinated Botnet Astroturfing:** Central operative detonating a star cluster of automated bot accounts simultaneously.
+5. **Case 5: Viral WhatsApp Forwarding Chain:** Linear whisper forward vector showing identical BFS and DFS sequence.
+6. **Case 6: Cyclic Rumor Ring with Cross-Ties:** Interconnected community testing cycle detection and loop immunity.
+7. **Case 7: Segmented Closed Communities:** Disconnected subgraphs demonstrating network insulation and unreached components.
+8. **⚡ Scale-Free Network (Barabási-Albert):** Power-law hub network generated using preferential attachment.
+9. **⚡ Small-World Network (Watts-Strogatz):** High clustering and short characteristic path length network.

@@ -1,13 +1,19 @@
 """Flask Application Server for the Fake News Propagation Simulator.
 
 Exposes RESTful endpoints for graph manipulation, algorithmic simulations (BFS/DFS),
-and comparative traversal analysis.
+dual-wave rumor vs truth race, super-spreader centrality analytics, and comparative traversal analysis.
 """
 
 import os
 from flask import Flask, render_template, request, jsonify
 from core.graph import Graph
-from core.algorithms import simulate_bfs, simulate_dfs, compare_algorithms, simulate_race
+from core.algorithms import (
+    simulate_bfs,
+    simulate_dfs,
+    compare_algorithms,
+    simulate_race,
+    compute_centrality
+)
 from core.presets import get_preset_network, list_preset_metadata
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
@@ -50,7 +56,8 @@ def simulate():
         {
             "graph": { "nodes": [...], "edges": [...], "is_directed": bool },
             "source": "Alice",
-            "algorithm": "BFS" | "DFS"
+            "algorithm": "BFS" | "DFS",
+            "virality": 0.75
         }
     """
     data = request.get_json()
@@ -60,6 +67,10 @@ def simulate():
     graph_data = data.get("graph")
     source = data.get("source")
     algorithm = data.get("algorithm", "BFS").upper().strip()
+    try:
+        virality = float(data.get("virality", 0.75))
+    except (ValueError, TypeError):
+        virality = 0.75
 
     if not graph_data or not graph_data.get("nodes"):
         return jsonify({"error": "Graph cannot be empty. Please add at least one user."}), 400
@@ -74,9 +85,9 @@ def simulate():
             return jsonify({"error": f"Source user '{source}' does not exist in the current network."}), 400
 
         if algorithm == "BFS":
-            result = simulate_bfs(graph, source)
+            result = simulate_bfs(graph, source, virality=virality)
         elif algorithm == "DFS":
-            result = simulate_dfs(graph, source)
+            result = simulate_dfs(graph, source, virality=virality)
         else:
             return jsonify({"error": f"Unsupported algorithm '{algorithm}'. Must be BFS or DFS."}), 400
 
@@ -108,6 +119,25 @@ def simulate_race_endpoint():
         graph = Graph.from_dict(graph_data)
         result = simulate_race(graph, rumor_source, fact_source, delay)
         return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/analytics/centrality", methods=["POST"])
+def analyze_centrality():
+    """Calculate PageRank and degree centrality for network nodes."""
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No JSON payload provided."}), 400
+
+    graph_data = data.get("graph", data)
+    if not graph_data or not graph_data.get("nodes"):
+        return jsonify({"error": "Graph cannot be empty."}), 400
+
+    try:
+        graph = Graph.from_dict(graph_data)
+        metrics = compute_centrality(graph)
+        return jsonify(metrics)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -174,6 +204,5 @@ def validate_graph():
 
 
 if __name__ == "__main__":
-    # Host on 127.0.0.1:5000 for local development and demonstration
     port = int(os.environ.get("PORT", 5000))
     app.run(host="127.0.0.1", port=port, debug=True)

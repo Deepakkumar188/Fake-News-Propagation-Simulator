@@ -1,8 +1,11 @@
-"""Breadth-First Search (BFS) and Depth-First Search (DFS) Traversal Engines.
+"""Breadth-First Search (BFS), Depth-First Search (DFS), and Multi-Source Race Engines.
 
 This module executes graph traversals on social networks to simulate fake news
-propagation. It records fine-grained, pedagogical event logs that can be
-replayed step-by-step in the frontend visualization.
+propagation and counter-disinformation defense. It features:
+- BFS viral broadcast and DFS targeted whisper chains
+- AI-driven Susceptibility & Skepticism threshold resistance
+- Multi-Source Simultaneous Race (Truth vs. Rumor)
+- PageRank & Betweenness Centrality Super-Spreader Detection
 """
 
 from collections import deque
@@ -23,19 +26,67 @@ def _generate_stats(total_nodes: int, visited_count: int, levels: Dict[str, int]
     }
 
 
-def simulate_bfs(graph: Graph, source: str) -> Dict[str, Any]:
+def compute_pagerank(graph: Graph, damping: float = 0.85, max_iter: int = 35) -> Dict[str, float]:
+    """Compute PageRank influence scores for all nodes in the graph."""
+    nodes = graph.get_nodes()
+    n = len(nodes)
+    if n == 0:
+        return {}
+
+    pr = {node: 1.0 / n for node in nodes}
+
+    for _ in range(max_iter):
+        new_pr = {}
+        for u in nodes:
+            rank_sum = 0.0
+            for v in graph.get_neighbors(u):
+                out_deg = len(graph.get_neighbors(v))
+                if out_deg > 0:
+                    rank_sum += pr[v] / out_deg
+            new_pr[u] = (1.0 - damping) / n + damping * rank_sum
+        pr = new_pr
+
+    max_val = max(pr.values()) if pr and max(pr.values()) > 0 else 1.0
+    return {k: round(v / max_val, 4) for k, v in pr.items()}
+
+
+def compute_centrality(graph: Graph) -> Dict[str, Any]:
+    """Identify network Super-Spreaders using PageRank and Degree Centrality."""
+    pr = compute_pagerank(graph)
+    degrees = graph.get_degrees()
+    total_nodes = graph.get_node_count()
+
+    ranked = []
+    for node in graph.get_nodes():
+        meta = graph.nodes.get(node, {})
+        label = meta.get("label", node)
+        role = meta.get("role", "Standard User")
+        rank_score = pr.get(node, 0.1)
+        deg = degrees.get(node, {}).get("total", 0)
+        norm_deg = (deg / max(1, total_nodes - 1)) if total_nodes > 1 else 0.5
+        influence = round((rank_score * 0.65 + norm_deg * 0.35) * 100, 1)
+
+        ranked.append({
+            "id": node,
+            "label": label,
+            "role": role,
+            "pagerank": rank_score,
+            "degree": deg,
+            "influence_index": influence
+        })
+
+    ranked.sort(key=lambda x: x["influence_index"], reverse=True)
+    return {
+        "top_super_spreaders": ranked[:3],
+        "all_nodes": ranked,
+        "pagerank_scores": pr
+    }
+
+
+def simulate_bfs(graph: Graph, source: str, virality: float = 0.75) -> Dict[str, Any]:
     """Simulate Fake News Propagation using Breadth-First Search (BFS).
     
-    BFS propagates level-by-level using a FIFO Queue. It simulates a broadcast
-    wavefront where all immediate contacts receive the rumor before it spreads
-    to second-degree connections.
-    
-    Args:
-        graph: The Graph instance.
-        source: Node ID where the fake news originates ('Patient Zero').
-        
-    Returns:
-        Dict containing the complete step log, final metrics, and summary.
+    Includes AI Susceptibility: if neighbor skepticism > virality, rumor is resisted.
     """
     source = str(source).strip()
     if not graph.has_node(source):
@@ -44,8 +95,8 @@ def simulate_bfs(graph: Graph, source: str) -> Dict[str, Any]:
     total_nodes = graph.get_node_count()
     step_log: List[Dict[str, Any]] = []
     traversal_order: List[str] = []
-    
-    # Core BFS Data Structures
+    resisted: Set[str] = set()
+
     queue: deque = deque([source])
     visited: Set[str] = {source}
     levels: Dict[str, int] = {source: 0}
@@ -53,7 +104,6 @@ def simulate_bfs(graph: Graph, source: str) -> Dict[str, Any]:
     
     step_counter = 1
 
-    # Initial Step: Source starts the rumor
     step_log.append({
         "step_id": step_counter,
         "algorithm": "BFS",
@@ -64,15 +114,15 @@ def simulate_bfs(graph: Graph, source: str) -> Dict[str, Any]:
         "queue_state": list(queue),
         "stack_state": [],
         "visited_nodes": list(visited),
+        "resisted_nodes": list(resisted),
         "levels": dict(levels),
         "parents": dict(parents),
         "traversal_order": list(traversal_order),
-        "explanation": f"Fake news originates at '{source}' (Level 0). '{source}' is added to visited set and pushed into the FIFO Queue.",
+        "explanation": f"Disinformation originates at '{source}' (Level 0). Enqueued into FIFO buffer.",
         "stats": _generate_stats(total_nodes, len(visited), levels)
     })
 
     while queue:
-        # Dequeue the front element
         curr = queue.popleft()
         traversal_order.append(curr)
         curr_level = levels[curr]
@@ -88,40 +138,44 @@ def simulate_bfs(graph: Graph, source: str) -> Dict[str, Any]:
             "queue_state": list(queue),
             "stack_state": [],
             "visited_nodes": list(visited),
+            "resisted_nodes": list(resisted),
             "levels": dict(levels),
             "parents": dict(parents),
             "traversal_order": list(traversal_order),
-            "explanation": f"Dequeued '{curr}' from front of Queue (Propagation Level {curr_level}). Now inspecting its social connections.",
+            "explanation": f"Dequeued '{curr}' at Wavefront Level {curr_level}. Scanning outgoing vectors.",
             "stats": _generate_stats(total_nodes, len(visited), levels)
         })
 
         neighbors = graph.get_neighbors(curr)
-        
-        if not neighbors:
-            step_counter += 1
-            step_log.append({
-                "step_id": step_counter,
-                "algorithm": "BFS",
-                "action": "NO_NEIGHBORS",
-                "current_node": curr,
-                "neighbor_node": None,
-                "active_edge": None,
-                "queue_state": list(queue),
-                "stack_state": [],
-                "visited_nodes": list(visited),
-                "levels": dict(levels),
-                "parents": dict(parents),
-                "traversal_order": list(traversal_order),
-                "explanation": f"'{curr}' has no outgoing connections. Propagation stops along this branch.",
-                "stats": _generate_stats(total_nodes, len(visited), levels)
-            })
 
         for neighbor in neighbors:
             step_counter += 1
             active_edge = [curr, neighbor]
 
             if neighbor not in visited:
-                # Discovered an uninfected user
+                skepticism = graph.nodes.get(neighbor, {}).get("skepticism", 0.45)
+                # Check AI Susceptibility threshold
+                if virality < 1.0 and skepticism > virality:
+                    resisted.add(neighbor)
+                    step_log.append({
+                        "step_id": step_counter,
+                        "algorithm": "BFS",
+                        "action": "RESISTED_SKEPTIC",
+                        "current_node": curr,
+                        "neighbor_node": neighbor,
+                        "active_edge": active_edge,
+                        "queue_state": list(queue),
+                        "stack_state": [],
+                        "visited_nodes": list(visited),
+                        "resisted_nodes": list(resisted),
+                        "levels": dict(levels),
+                        "parents": dict(parents),
+                        "traversal_order": list(traversal_order),
+                        "explanation": f"Entity '{neighbor}' resisted transmission! Skepticism ({skepticism:.2f}) > Persuasiveness ({virality:.2f}). Rumor rejected.",
+                        "stats": _generate_stats(total_nodes, len(visited), levels)
+                    })
+                    continue
+
                 visited.add(neighbor)
                 levels[neighbor] = curr_level + 1
                 parents[neighbor] = curr
@@ -137,14 +191,14 @@ def simulate_bfs(graph: Graph, source: str) -> Dict[str, Any]:
                     "queue_state": list(queue),
                     "stack_state": [],
                     "visited_nodes": list(visited),
+                    "resisted_nodes": list(resisted),
                     "levels": dict(levels),
                     "parents": dict(parents),
                     "traversal_order": list(traversal_order),
-                    "explanation": f"Propagated from '{curr}' to '{neighbor}'. '{neighbor}' receives the rumor at Level {curr_level + 1} and is ENQUEUED.",
+                    "explanation": f"Transmission vector '{curr}' -> '{neighbor}' succeeded. '{neighbor}' compromised at Hop {curr_level + 1} and enqueued.",
                     "stats": _generate_stats(total_nodes, len(visited), levels)
                 })
             else:
-                # Cycle or alternative already-infected path
                 step_log.append({
                     "step_id": step_counter,
                     "algorithm": "BFS",
@@ -155,17 +209,17 @@ def simulate_bfs(graph: Graph, source: str) -> Dict[str, Any]:
                     "queue_state": list(queue),
                     "stack_state": [],
                     "visited_nodes": list(visited),
+                    "resisted_nodes": list(resisted),
                     "levels": dict(levels),
                     "parents": dict(parents),
                     "traversal_order": list(traversal_order),
-                    "explanation": f"Connection '{curr}' -> '{neighbor}' inspected, but '{neighbor}' already received the news earlier (Cycle/Cross edge). Skipped to prevent redundant forwarding.",
+                    "explanation": f"Vector '{curr}' -> '{neighbor}' already compromised previously. Skipped to prevent redundant forwarding.",
                     "stats": _generate_stats(total_nodes, len(visited), levels)
                 })
 
-    # Final completion step
     step_counter += 1
     unreached = [n for n in graph.get_nodes() if n not in visited]
-    
+
     step_log.append({
         "step_id": step_counter,
         "algorithm": "BFS",
@@ -176,20 +230,23 @@ def simulate_bfs(graph: Graph, source: str) -> Dict[str, Any]:
         "queue_state": [],
         "stack_state": [],
         "visited_nodes": list(visited),
+        "resisted_nodes": list(resisted),
         "levels": dict(levels),
         "parents": dict(parents),
         "traversal_order": list(traversal_order),
-        "explanation": f"Queue is empty! BFS propagation complete. Reached {len(visited)}/{total_nodes} users across {max(levels.values())} levels.",
+        "explanation": f"FIFO buffer exhausted. BFS diffusion stabilized. Compromised: {len(visited)}/{total_nodes} entities across {max(levels.values())} levels.",
         "stats": _generate_stats(total_nodes, len(visited), levels)
     })
 
     return {
         "algorithm": "BFS",
         "source": source,
+        "virality": virality,
         "steps": step_log,
         "total_steps": len(step_log),
         "traversal_order": traversal_order,
         "reached_nodes": list(visited),
+        "resisted_nodes": list(resisted),
         "unreached_nodes": unreached,
         "levels": levels,
         "parents": parents,
@@ -197,6 +254,7 @@ def simulate_bfs(graph: Graph, source: str) -> Dict[str, Any]:
             "total_nodes": total_nodes,
             "total_edges": graph.get_edge_count(),
             "infected_count": len(visited),
+            "resisted_count": len(resisted),
             "unreached_count": len(unreached),
             "reach_percentage": round((len(visited) / total_nodes * 100), 1) if total_nodes > 0 else 0,
             "max_depth": max(levels.values()) if levels else 0,
@@ -207,19 +265,8 @@ def simulate_bfs(graph: Graph, source: str) -> Dict[str, Any]:
     }
 
 
-def simulate_dfs(graph: Graph, source: str) -> Dict[str, Any]:
-    """Simulate Fake News Propagation using Depth-First Search (DFS).
-    
-    DFS explores a single whisper chain as deeply as possible before backtracking.
-    It uses an explicit LIFO Stack to simulate private, multi-hop rumor forwards.
-    
-    Args:
-        graph: The Graph instance.
-        source: Node ID where the fake news originates ('Patient Zero').
-        
-    Returns:
-        Dict containing the complete step log, final metrics, and summary.
-    """
+def simulate_dfs(graph: Graph, source: str, virality: float = 0.75) -> Dict[str, Any]:
+    """Simulate Fake News Propagation using Depth-First Search (DFS)."""
     source = str(source).strip()
     if not graph.has_node(source):
         raise KeyError(f"Source user '{source}' does not exist in the network.")
@@ -227,8 +274,8 @@ def simulate_dfs(graph: Graph, source: str) -> Dict[str, Any]:
     total_nodes = graph.get_node_count()
     step_log: List[Dict[str, Any]] = []
     traversal_order: List[str] = []
-    
-    # Core DFS Data Structures
+    resisted: Set[str] = set()
+
     stack: List[str] = [source]
     visited: Set[str] = set()
     levels: Dict[str, int] = {source: 0}
@@ -236,7 +283,6 @@ def simulate_dfs(graph: Graph, source: str) -> Dict[str, Any]:
     
     step_counter = 1
 
-    # Initial Step: Source pushed to stack
     step_log.append({
         "step_id": step_counter,
         "algorithm": "DFS",
@@ -247,10 +293,11 @@ def simulate_dfs(graph: Graph, source: str) -> Dict[str, Any]:
         "queue_state": [],
         "stack_state": list(stack),
         "visited_nodes": list(visited),
+        "resisted_nodes": list(resisted),
         "levels": dict(levels),
         "parents": dict(parents),
         "traversal_order": list(traversal_order),
-        "explanation": f"Fake news originates at '{source}'. '{source}' is pushed onto the LIFO Stack as the starting point of the whisper chain.",
+        "explanation": f"Penetrative whisper cascade initiated at '{source}'. Pushed onto LIFO branch register.",
         "stats": _generate_stats(total_nodes, len(visited), levels)
     })
 
@@ -259,6 +306,28 @@ def simulate_dfs(graph: Graph, source: str) -> Dict[str, Any]:
         step_counter += 1
 
         if curr not in visited:
+            skepticism = graph.nodes.get(curr, {}).get("skepticism", 0.45)
+            if curr != source and virality < 1.0 and skepticism > virality:
+                resisted.add(curr)
+                step_log.append({
+                    "step_id": step_counter,
+                    "algorithm": "DFS",
+                    "action": "RESISTED_SKEPTIC",
+                    "current_node": curr,
+                    "neighbor_node": None,
+                    "active_edge": None,
+                    "queue_state": [],
+                    "stack_state": list(stack),
+                    "visited_nodes": list(visited),
+                    "resisted_nodes": list(resisted),
+                    "levels": dict(levels),
+                    "parents": dict(parents),
+                    "traversal_order": list(traversal_order),
+                    "explanation": f"Entity '{curr}' popped from stack but resisted propagation! Skepticism ({skepticism:.2f}) > Virality ({virality:.2f}).",
+                    "stats": _generate_stats(total_nodes, len(visited), levels)
+                })
+                continue
+
             visited.add(curr)
             traversal_order.append(curr)
             curr_level = levels.get(curr, 0)
@@ -273,17 +342,15 @@ def simulate_dfs(graph: Graph, source: str) -> Dict[str, Any]:
                 "queue_state": [],
                 "stack_state": list(stack),
                 "visited_nodes": list(visited),
+                "resisted_nodes": list(resisted),
                 "levels": dict(levels),
                 "parents": dict(parents),
                 "traversal_order": list(traversal_order),
-                "explanation": f"Popped '{curr}' from top of Stack. User '{curr}' is marked infected and added to traversal order.",
+                "explanation": f"Popped '{curr}' from top of Stack. Entity compromised along active whisper path.",
                 "stats": _generate_stats(total_nodes, len(visited), levels)
             })
 
             neighbors = graph.get_neighbors(curr)
-
-            # In standard iterative DFS, we push neighbors in reverse order so the
-            # first neighbor is popped and explored first.
             unvisited_neighbors = [n for n in reversed(neighbors) if n not in visited]
 
             if not unvisited_neighbors:
@@ -298,10 +365,11 @@ def simulate_dfs(graph: Graph, source: str) -> Dict[str, Any]:
                     "queue_state": [],
                     "stack_state": list(stack),
                     "visited_nodes": list(visited),
+                    "resisted_nodes": list(resisted),
                     "levels": dict(levels),
                     "parents": dict(parents),
                     "traversal_order": list(traversal_order),
-                    "explanation": f"All outgoing connections of '{curr}' are already infected or absent. Backtracking to explore earlier branches in the Stack.",
+                    "explanation": f"All vectors from '{curr}' exhausted. Backtracking to explore alternate branches in Stack.",
                     "stats": _generate_stats(total_nodes, len(visited), levels)
                 })
 
@@ -324,35 +392,17 @@ def simulate_dfs(graph: Graph, source: str) -> Dict[str, Any]:
                         "queue_state": [],
                         "stack_state": list(stack),
                         "visited_nodes": list(visited),
+                        "resisted_nodes": list(resisted),
                         "levels": dict(levels),
                         "parents": dict(parents),
                         "traversal_order": list(traversal_order),
-                        "explanation": f"Whisper passed along connection '{curr}' -> '{neighbor}'. '{neighbor}' PUSHED onto top of Stack.",
+                        "explanation": f"Whisper passed via vector '{curr}' -> '{neighbor}'. '{neighbor}' pushed onto Stack.",
                         "stats": _generate_stats(total_nodes, len(visited), levels)
                     })
-        else:
-            # Node was already visited via another path
-            step_log.append({
-                "step_id": step_counter,
-                "algorithm": "DFS",
-                "action": "SKIP_VISITED",
-                "current_node": curr,
-                "neighbor_node": None,
-                "active_edge": None,
-                "queue_state": [],
-                "stack_state": list(stack),
-                "visited_nodes": list(visited),
-                "levels": dict(levels),
-                "parents": dict(parents),
-                "traversal_order": list(traversal_order),
-                "explanation": f"Popped '{curr}' from top of Stack, but '{curr}' was already infected via a deeper path. Discarded.",
-                "stats": _generate_stats(total_nodes, len(visited), levels)
-            })
 
-    # Final completion step
     step_counter += 1
     unreached = [n for n in graph.get_nodes() if n not in visited]
-    
+
     step_log.append({
         "step_id": step_counter,
         "algorithm": "DFS",
@@ -363,20 +413,23 @@ def simulate_dfs(graph: Graph, source: str) -> Dict[str, Any]:
         "queue_state": [],
         "stack_state": [],
         "visited_nodes": list(visited),
+        "resisted_nodes": list(resisted),
         "levels": dict(levels),
         "parents": dict(parents),
         "traversal_order": list(traversal_order),
-        "explanation": f"Stack is empty! DFS propagation complete. Reached {len(visited)}/{total_nodes} users.",
+        "explanation": f"Stack register empty. DFS trajectory concluded. Compromised: {len(visited)}/{total_nodes} entities.",
         "stats": _generate_stats(total_nodes, len(visited), levels)
     })
 
     return {
         "algorithm": "DFS",
         "source": source,
+        "virality": virality,
         "steps": step_log,
         "total_steps": len(step_log),
         "traversal_order": traversal_order,
         "reached_nodes": list(visited),
+        "resisted_nodes": list(resisted),
         "unreached_nodes": unreached,
         "levels": levels,
         "parents": parents,
@@ -384,6 +437,7 @@ def simulate_dfs(graph: Graph, source: str) -> Dict[str, Any]:
             "total_nodes": total_nodes,
             "total_edges": graph.get_edge_count(),
             "infected_count": len(visited),
+            "resisted_count": len(resisted),
             "unreached_count": len(unreached),
             "reach_percentage": round((len(visited) / total_nodes * 100), 1) if total_nodes > 0 else 0,
             "max_depth": max(levels.values()) if levels else 0,
@@ -402,7 +456,6 @@ def compare_algorithms(graph: Graph, source: str) -> Dict[str, Any]:
     bfs_steps = bfs_result["steps"]
     dfs_steps = dfs_result["steps"]
 
-    # Maximum memory footprint during execution
     bfs_max_queue = max(len(step["queue_state"]) for step in bfs_steps) if bfs_steps else 0
     dfs_max_stack = max(len(step["stack_state"]) for step in dfs_steps) if dfs_steps else 0
 
@@ -439,15 +492,7 @@ def compare_algorithms(graph: Graph, source: str) -> Dict[str, Any]:
 
 
 def simulate_race(graph: Graph, rumor_source: str, fact_source: str, fact_delay: int = 1) -> Dict[str, Any]:
-    """Simulate a dual-wave race: Rumor Propagation vs. Fact-Checker Counter-Dissemination.
-    
-    Uses Multi-Source Simultaneous BFS. The Rumor starts immediately from `rumor_source`.
-    After a realistic lag (`fact_delay`), the Fact-Checker launches the truth wave from `fact_source`.
-    
-    Nodes reached by Truth first are 'Inoculated' (Immune).
-    Nodes reached by Rumor first are 'Infected'.
-    If Truth later reaches an Infected node, it 'Debunks / Neutralizes' the misinformation!
-    """
+    """Simulate a dual-wave race: Rumor Propagation vs. Fact-Checker Counter-Dissemination."""
     rumor_source = str(rumor_source).strip()
     fact_source = str(fact_source).strip()
 
@@ -459,11 +504,9 @@ def simulate_race(graph: Graph, rumor_source: str, fact_source: str, fact_delay:
     total_nodes = graph.get_node_count()
     step_log: List[Dict[str, Any]] = []
 
-    # Queues for Rumor and Fact-Check waves
     rumor_queue: deque = deque([rumor_source])
     fact_queue: deque = deque()
 
-    # States
     infected: Set[str] = {rumor_source}
     inoculated: Set[str] = set()
     debunked: Set[str] = set()
@@ -476,7 +519,6 @@ def simulate_race(graph: Graph, rumor_source: str, fact_source: str, fact_delay:
         "debunked_count": 0
     }]
 
-    # Step 1: Rumor Origin Launch
     step_log.append({
         "step_id": step_counter,
         "algorithm": "RACE",
@@ -498,7 +540,6 @@ def simulate_race(graph: Graph, rumor_source: str, fact_source: str, fact_delay:
     clock_tick = 1
 
     while rumor_queue or fact_queue or clock_tick <= fact_delay + 1:
-        # Check if Fact-Checker activates at this clock tick
         if clock_tick == fact_delay + 1 and fact_source not in inoculated and fact_source not in debunked:
             if fact_source in infected:
                 debunked.add(fact_source)
@@ -533,7 +574,6 @@ def simulate_race(graph: Graph, rumor_source: str, fact_source: str, fact_delay:
                 "explanation": f"Fact-Checker counter-wave mobilized at '{fact_source}'. Truth broadcast initiated to inoculate network."
             })
 
-        # Process one step of Rumor Wave
         if rumor_queue:
             curr_rumor = rumor_queue.popleft()
             for neighbor in graph.get_neighbors(curr_rumor):
@@ -586,12 +626,10 @@ def simulate_race(graph: Graph, rumor_source: str, fact_source: str, fact_delay:
                         "explanation": f"Rumor attempted transmission to '{neighbor}', but user is already Inoculated by Fact-Check! Rumor blocked."
                     })
 
-        # Process one step of Fact-Checker Wave
         if fact_queue:
             curr_fact = fact_queue.popleft()
             for neighbor in graph.get_neighbors(curr_fact):
                 if neighbor in infected:
-                    # Debunk / Neutralize infected node!
                     infected.remove(neighbor)
                     debunked.add(neighbor)
                     fact_queue.append(neighbor)
@@ -622,7 +660,6 @@ def simulate_race(graph: Graph, rumor_source: str, fact_source: str, fact_delay:
                         "explanation": f"Fact-Check intercepted compromised entity '{neighbor}'! Misinformation neutralized and debunked."
                     })
                 elif neighbor not in inoculated and neighbor not in debunked:
-                    # Inoculate healthy node
                     inoculated.add(neighbor)
                     fact_queue.append(neighbor)
                     step_counter += 1
@@ -654,7 +691,6 @@ def simulate_race(graph: Graph, rumor_source: str, fact_source: str, fact_delay:
 
         clock_tick += 1
 
-    # Final wrap-up
     step_counter += 1
     unreached = [n for n in graph.get_nodes() if n not in infected and n not in inoculated and n not in debunked]
 
