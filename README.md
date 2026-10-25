@@ -1,5 +1,4 @@
 # Fake News Propagation Simulator
-## B.Tech Computer Science and Engineering (Artificial Intelligence) — Major Academic Project in DSA
 
 An interactive simulation and visualization platform modeling the diffusion of misinformation across social networks using fundamental Graph Data Structures and Graph Traversal Algorithms (**Breadth-First Search** and **Depth-First Search**).
 
