@@ -80,6 +80,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnInspInoculate = document.getElementById('btn-insp-inoculate');
     const btnInspQuarantine = document.getElementById('btn-insp-quarantine');
 
+    // AI NLP Headline Audit DOM References
+    const headlineInput = document.getElementById('headline-input');
+    const btnAnalyzeHeadline = document.getElementById('btn-analyze-headline');
+    const headlineReportTray = document.getElementById('headline-report-tray');
+    const aiVerdictTag = document.getElementById('ai-verdict-tag');
+    const aiCredScore = document.getElementById('ai-cred-score');
+    const aiPredVirality = document.getElementById('ai-pred-virality');
+    const btnDismissAiReport = document.getElementById('btn-dismiss-ai-report');
+    const aiFlagsList = document.getElementById('ai-flags-list');
+
     let isPageRankActive = false;
     let isCommunityActive = false;
     let cachedCentrality = null;
@@ -746,6 +756,108 @@ document.addEventListener('DOMContentLoaded', () => {
     presetSelect.addEventListener('change', (e) => {
         loadPresetTopology(e.target.value);
     });
+
+    // 17.5 AI Headline Credibility Audit Engine
+    async function runHeadlineCredibilityAudit() {
+        const headline = (headlineInput.value || '').trim();
+        if (!headline) {
+            alert('Please enter or paste a news headline to audit.');
+            headlineInput.focus();
+            return;
+        }
+
+        btnAnalyzeHeadline.disabled = true;
+        btnAnalyzeHeadline.innerHTML = '<span class="icon">⏳</span> Auditing NLP...';
+
+        try {
+            const resp = await fetch('/api/ai/analyze-headline', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ headline: headline })
+            });
+            const data = await resp.json();
+            if (!resp.ok) {
+                alert(data.error || 'Failed to analyze headline credibility.');
+                return;
+            }
+
+            // Render verdict badge and metrics
+            aiVerdictTag.textContent = data.verdict;
+            aiVerdictTag.className = `verdict-tag verdict-${data.status_class}`;
+            aiCredScore.textContent = `${data.credibility_score}%`;
+            const viralityPct = Math.round(data.predicted_virality * 100);
+            aiPredVirality.textContent = `${viralityPct}%`;
+
+            // Render red flag cues
+            aiFlagsList.innerHTML = '';
+            if (data.red_flags && data.red_flags.length > 0) {
+                data.red_flags.forEach(flag => {
+                    const chip = document.createElement('span');
+                    chip.className = 'ai-flag-chip';
+                    chip.innerHTML = `⚠️ ${flag}`;
+                    aiFlagsList.appendChild(chip);
+                });
+            }
+            if (data.counter_narrative) {
+                const counter = document.createElement('div');
+                counter.className = 'ai-counter-narrative';
+                counter.innerHTML = `🛡️ <strong>AI Counter-Fact Verification:</strong> ${data.counter_narrative}`;
+                aiFlagsList.appendChild(counter);
+            }
+
+            headlineReportTray.style.display = 'flex';
+
+            // Auto-calibrate Virality Slider according to AI predicted virality
+            if (viralitySlider) {
+                viralitySlider.value = viralityPct;
+                if (viralityVal) viralityVal.textContent = `${viralityPct}%`;
+            }
+
+            // Play alert / audit chime
+            if (window.soundFX && soundFX.playAlert) {
+                soundFX.playAlert();
+            }
+
+            // Annotate source node with audited headline
+            const currentSource = sourceSelect.value;
+            if (currentSource && networkVis && networkVis.nodesDataSet) {
+                const existing = networkVis.nodesDataSet.get(currentSource);
+                if (existing) {
+                    networkVis.nodesDataSet.update({
+                        id: currentSource,
+                        title: `Entity: ${currentSource}\nRole: ${existing.role}\n🚨 INJECTED HEADLINE:\n"${data.headline}"\nAI Credibility: ${data.credibility_score}%\nVirality Index: ${viralityPct}%`
+                    });
+                }
+            }
+
+            // Trigger fresh simulation cascade with AI calibrated parameters
+            requestSimulation();
+
+        } catch (err) {
+            console.error('AI headline audit failure:', err);
+            alert('Failed to connect to AI NLP credibility audit engine.');
+        } finally {
+            btnAnalyzeHeadline.disabled = false;
+            btnAnalyzeHeadline.innerHTML = '<span class="icon">🔍</span> Audit &amp; Inject';
+        }
+    }
+
+    if (btnAnalyzeHeadline) {
+        btnAnalyzeHeadline.addEventListener('click', runHeadlineCredibilityAudit);
+    }
+    if (headlineInput) {
+        headlineInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                runHeadlineCredibilityAudit();
+            }
+        });
+    }
+    if (btnDismissAiReport) {
+        btnDismissAiReport.addEventListener('click', () => {
+            headlineReportTray.style.display = 'none';
+        });
+    }
 
     // 18. Graph Editing Listeners
     btnAddNode.addEventListener('click', () => {

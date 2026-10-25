@@ -2,7 +2,7 @@
 
 Exposes RESTful endpoints for graph manipulation, algorithmic simulations (BFS/DFS/SIR),
 dual-wave rumor vs truth race, super-spreader centrality analytics, automated firewall containment,
-community detection, and comparative traversal analysis.
+community detection, AI headline credibility NLP analysis, and comparative traversal analysis.
 """
 
 import os
@@ -19,6 +19,7 @@ from core.algorithms import (
     detect_communities
 )
 from core.presets import get_preset_network, list_preset_metadata
+from core.credibility_analyzer import analyze_news_credibility
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.config["SECRET_KEY"] = os.urandom(24)
@@ -188,6 +189,21 @@ def analyze_communities():
         graph = Graph.from_dict(graph_data)
         res = detect_communities(graph)
         return jsonify(res)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/ai/analyze-headline", methods=["POST"])
+def analyze_headline():
+    """Analyze a news headline for misinformation linguistic markers and virality."""
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No JSON payload provided."}), 400
+
+    headline = data.get("headline", "")
+    try:
+        report = analyze_news_credibility(headline)
+        return jsonify(report)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

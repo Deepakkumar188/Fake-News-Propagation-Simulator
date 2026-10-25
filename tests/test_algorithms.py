@@ -1,4 +1,4 @@
-"""Unit tests for BFS, DFS, Race, SIR, Centrality, Containment, and Community Detection."""
+"""Unit tests for BFS, DFS, Race, SIR, Centrality, Containment, Communities, and NLP Credibility."""
 
 import unittest
 from core.graph import Graph
@@ -23,6 +23,7 @@ from core.presets import (
     generate_scale_free_network,
     generate_small_world_network
 )
+from core.credibility_analyzer import analyze_news_credibility
 
 
 class TestAlgorithms(unittest.TestCase):
@@ -127,7 +128,6 @@ class TestAlgorithms(unittest.TestCase):
 
     def test_calculate_optimal_containment(self):
         g = create_election_echo_network()
-        # In echo chambers, the Swing_Voter_Bridge connects the two communities!
         cuts = calculate_optimal_containment(g, "Partisan_Alpha_Lead", budget=2)
         self.assertIn("optimal_edge_cuts", cuts)
         self.assertIn("optimal_node_cuts", cuts)
@@ -140,6 +140,35 @@ class TestAlgorithms(unittest.TestCase):
         self.assertIn("total_communities", comm)
         self.assertIn("node_communities", comm)
         self.assertGreaterEqual(comm["total_communities"], 2)
+
+    def test_ai_credibility_analyzer_fake(self):
+        fake_headline = "URGENT ALERT: Government announces 50% tax on all crypto withdrawals from midnight! Withdraw now!!!"
+        res = analyze_news_credibility(fake_headline)
+        self.assertLess(res["credibility_score"], 40)
+        self.assertEqual(res["verdict_level"], "danger")
+        self.assertGreaterEqual(res["predicted_virality"], 0.80)
+        self.assertGreater(len(res["red_flags"]), 0)
+
+    def test_ai_credibility_analyzer_neutral(self):
+        neutral_headline = "Ministry of Finance releases annual quarterly economic report."
+        res = analyze_news_credibility(neutral_headline)
+        self.assertGreater(res["credibility_score"], 60)
+        self.assertEqual(res["verdict_level"], "success")
+
+    def test_api_analyze_headline_endpoint(self):
+        from app import app
+        client = app.test_client()
+        response = client.post(
+            "/api/ai/analyze-headline",
+            json={"headline": "SHOCKING: 500 Rupee notes banned tonight! Withdraw cash now!!!"}
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertIn("credibility_score", data)
+        self.assertIn("verdict", data)
+        self.assertIn("status_class", data)
+        self.assertEqual(data["status_class"], "danger")
+        self.assertGreaterEqual(data["predicted_virality"], 0.8)
 
 
 if __name__ == "__main__":

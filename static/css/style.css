@@ -368,6 +368,213 @@ body:not(.light-theme) .sys-tag {
 }
 
 /* ==========================================================================
+   AI News Credibility & Headline Audit Dock
+   ========================================================================== */
+.headline-analyzer-dock {
+    background: var(--card-surface);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-md);
+    padding: 10px 16px;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.headline-analyzer-dock:focus-within {
+    border-color: var(--neon-cyan);
+    box-shadow: 0 0 20px rgba(14, 165, 233, 0.15);
+}
+
+.analyzer-input-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+
+.analyzer-badge {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: var(--neon-cyan);
+    background: rgba(14, 165, 233, 0.12);
+    border: 1px solid rgba(14, 165, 233, 0.3);
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+    letter-spacing: 0.05em;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.headline-input-field {
+    flex: 1;
+    background: var(--bg-primary);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-sm);
+    padding: 8px 14px;
+    font-size: 0.88rem;
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    transition: all 0.2s ease;
+}
+
+.headline-input-field:focus {
+    outline: none;
+    border-color: var(--neon-cyan);
+    box-shadow: 0 0 10px rgba(14, 165, 233, 0.2);
+}
+
+.dock-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-family: var(--font-sans);
+    font-weight: 700;
+    font-size: 0.82rem;
+    padding: 8px 16px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.dock-btn-cyan {
+    background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+    color: #ffffff;
+    box-shadow: 0 2px 10px rgba(14, 165, 233, 0.3);
+}
+
+.dock-btn-cyan:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(14, 165, 233, 0.45);
+}
+
+.dock-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.headline-report-tray {
+    background: rgba(0, 0, 0, 0.15);
+    border: 1px dashed var(--card-border);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    animation: fadeInTray 0.3s ease-out;
+}
+
+@keyframes fadeInTray {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.report-header-line {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.verdict-tag {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    font-weight: 800;
+    padding: 4px 10px;
+    border-radius: var(--radius-sm);
+    letter-spacing: 0.04em;
+    display: inline-flex;
+    align-items: center;
+}
+
+.verdict-tag.verdict-danger {
+    background: rgba(239, 68, 68, 0.16);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+.verdict-tag.verdict-warning {
+    background: rgba(245, 158, 11, 0.16);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.verdict-tag.verdict-success {
+    background: rgba(16, 185, 129, 0.16);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.ai-score-pill {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    background: var(--card-surface);
+    border: 1px solid var(--card-border);
+    padding: 3px 10px;
+    border-radius: var(--radius-sm);
+}
+
+.ai-score-pill strong {
+    color: var(--text-primary);
+    font-weight: 700;
+}
+
+.ai-dismiss-btn {
+    margin-left: auto;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.2rem;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0 4px;
+    transition: color 0.15s ease;
+}
+
+.ai-dismiss-btn:hover {
+    color: var(--text-primary);
+}
+
+.report-flags-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+}
+
+.ai-flag-chip {
+    font-size: 0.72rem;
+    font-family: var(--font-mono);
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--text-primary);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    padding: 3px 8px;
+    border-radius: var(--radius-sm);
+}
+
+.ai-counter-narrative {
+    width: 100%;
+    margin-top: 4px;
+    font-size: 0.8rem;
+    color: var(--neon-cyan);
+    background: rgba(14, 165, 233, 0.08);
+    border-left: 3px solid var(--neon-cyan);
+    padding: 6px 10px;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+
+/* ==========================================================================
    Command Deck (Controls Bar)
    ========================================================================== */
 .command-deck {

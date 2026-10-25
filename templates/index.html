@@ -100,6 +100,28 @@
             </div>
         </section>
 
+        <!-- AI NEWS CREDIBILITY & HEADLINE AUDIT DOCK -->
+        <section class="headline-analyzer-dock">
+            <div class="analyzer-input-group">
+                <span class="analyzer-badge">🧠 AI NLP AUDIT</span>
+                <input type="text" id="headline-input" class="headline-input-field" placeholder="Type or paste any news headline to test AI credibility (e.g. 'URGENT: Government bans 500 Rupee notes from midnight! Withdraw cash now!!!')">
+                <button id="btn-analyze-headline" class="dock-btn dock-btn-cyan" title="Run AI Linguistic &amp; Credibility Audit">
+                    <span class="icon">🔍</span> Audit &amp; Inject
+                </button>
+            </div>
+            <div id="headline-report-tray" class="headline-report-tray" style="display: none;">
+                <div class="report-header-line">
+                    <div class="verdict-tag" id="ai-verdict-tag">CRITICAL RISK // PROBABLE FAKE NEWS</div>
+                    <div class="ai-score-pill">Credibility: <strong id="ai-cred-score">18%</strong></div>
+                    <div class="ai-score-pill">Predicted Virality: <strong id="ai-pred-virality">92%</strong></div>
+                    <button id="btn-dismiss-ai-report" class="ai-dismiss-btn" title="Dismiss Report">&times;</button>
+                </div>
+                <div class="report-flags-list" id="ai-flags-list">
+                    <!-- Dynamic red flags -->
+                </div>
+            </div>
+        </section>
+
         <!-- COMMAND DECK (CONTROLS & PARAMETERS) -->
         <section class="command-deck">
             <div class="deck-row">
