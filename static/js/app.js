@@ -1,7 +1,7 @@
 /**
  * Main Application Controller for INFOCASCADE.
  * Handles UI interactions, API endpoints, visualization canvas,
- * Theme toggle (Dark / Light), and Real-World Case Study Briefings.
+ * Dual-Theme toggle, Real-World Case Studies, and Truth vs Rumor Race mode.
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -13,6 +13,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // 2. DOM Elements
     const algorithmSelect = document.getElementById('algorithm-select');
     const sourceSelect = document.getElementById('source-select');
+    const factSourcePod = document.getElementById('fact-source-pod');
+    const factSourceSelect = document.getElementById('fact-source-select');
     const presetSelect = document.getElementById('preset-select');
     const speedSlider = document.getElementById('speed-slider');
     const speedVal = document.getElementById('speed-val');
@@ -28,6 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const newNodeInput = document.getElementById('new-node-id');
     const newNodeRole = document.getElementById('new-node-role');
     const btnDeleteNode = document.getElementById('btn-delete-node');
+    const btnQuarantineNode = document.getElementById('btn-quarantine-node');
 
     const btnAddEdge = document.getElementById('btn-add-edge');
     const edgeFromSelect = document.getElementById('edge-from-select');
@@ -112,19 +115,34 @@ document.addEventListener('DOMContentLoaded', () => {
     function refreshNodeSelectors(selectedSource = null) {
         const nodeIds = networkVis.getNodeIds();
         
-        // Populate Source Select
+        // Populate Rumor Source Select
         sourceSelect.innerHTML = '';
+        factSourceSelect.innerHTML = '';
+
         nodeIds.forEach(id => {
             const opt = document.createElement('option');
             opt.value = id;
             opt.textContent = id;
             if (id === selectedSource) opt.selected = true;
             sourceSelect.appendChild(opt);
+
+            const optFact = document.createElement('option');
+            optFact.value = id;
+            optFact.textContent = id;
+            factSourceSelect.appendChild(optFact);
         });
 
-        // Default to first node
+        // Default Rumor Source to first node
         if (!sourceSelect.value && nodeIds.length > 0) {
             sourceSelect.value = nodeIds[0];
+        }
+
+        // Auto-select fact checker node if available
+        const factNode = nodeIds.find(id => id.toLowerCase().includes('fact') || id.toLowerCase().includes('sec') || id.toLowerCase().includes('physician') || id.toLowerCase().includes('agency'));
+        if (factNode) {
+            factSourceSelect.value = factNode;
+        } else if (nodeIds.length > 1) {
+            factSourceSelect.selectedIndex = nodeIds.length - 1;
         }
 
         // Populate Edge From and To Selects
@@ -147,7 +165,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // 6. API Service Call: Fetch Simulation
+    // 6. Handle Algorithm Mode Switching
+    function updateAlgorithmModeUI() {
+        const isRace = algorithmSelect.value === 'RACE';
+        if (factSourcePod) {
+            factSourcePod.style.display = isRace ? 'flex' : 'none';
+        }
+    }
+
+    // 7. API Service Call: Fetch Simulation
     async function requestSimulation() {
         const graphData = networkVis.getGraphData();
         const source = sourceSelect.value;
@@ -158,19 +184,30 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        if (!source) {
-            return;
-        }
+        if (!source) return;
 
         try {
-            const response = await fetch('/api/simulate', {
+            let endpoint = '/api/simulate';
+            let payload = {
+                graph: graphData,
+                source: source,
+                algorithm: algorithm
+            };
+
+            if (algorithm === 'RACE') {
+                endpoint = '/api/simulate/race';
+                payload = {
+                    graph: graphData,
+                    rumor_source: source,
+                    fact_source: factSourceSelect.value,
+                    delay: 1
+                };
+            }
+
+            const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    graph: graphData,
-                    source: source,
-                    algorithm: algorithm
-                })
+                body: JSON.stringify(payload)
             });
 
             const result = await response.json();
@@ -184,7 +221,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // 7. API Service Call: Load Preset Topology & Update Briefing
+    // 8. API Service Call: Load Preset Topology & Update Briefing
     async function loadPresetTopology(presetId) {
         if (!presetId) return;
 
@@ -200,6 +237,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (response.ok) {
                 networkVis.loadGraph(graphData);
                 refreshNodeSelectors();
+                updateAlgorithmModeUI();
                 await requestSimulation();
             } else {
                 alert(`Failed to load preset: ${graphData.error}`);
@@ -209,7 +247,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // 8. API Service Call: Comparative Traversal
+    // 9. API Service Call: Comparative Traversal
     async function runComparison() {
         const graphData = networkVis.getGraphData();
         const source = sourceSelect.value;
@@ -260,7 +298,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // 9. Tab Switching Logic
+    // 10. Tab Switching Logic
     function switchTab(tabId) {
         tabButtons.forEach(btn => {
             btn.classList.toggle('active', btn.dataset.tab === tabId);
@@ -276,7 +314,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // 10. Event Listeners for Controls
+    // 11. Event Listeners for Controls
     btnStart.addEventListener('click', () => simCtrl.play());
     btnPause.addEventListener('click', () => simCtrl.pause());
     btnNext.addEventListener('click', () => simCtrl.stepForward());
@@ -291,6 +329,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     algorithmSelect.addEventListener('change', () => {
+        updateAlgorithmModeUI();
         requestSimulation();
     });
 
@@ -298,11 +337,15 @@ document.addEventListener('DOMContentLoaded', () => {
         requestSimulation();
     });
 
+    factSourceSelect.addEventListener('change', () => {
+        requestSimulation();
+    });
+
     presetSelect.addEventListener('change', (e) => {
         loadPresetTopology(e.target.value);
     });
 
-    // 11. Graph Editing Listeners
+    // 12. Graph Editing Listeners
     btnAddNode.addEventListener('click', () => {
         const name = (newNodeInput.value || '').trim();
         const role = newNodeRole.value;
@@ -348,7 +391,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 12. Initial Boot: Apply saved theme and load Case 1 (Financial Panic)
+    // Quarantine entity button
+    if (btnQuarantineNode) {
+        btnQuarantineNode.addEventListener('click', () => {
+            const target = sourceSelect.value;
+            if (!target) return;
+            const success = networkVis.quarantineNode(target);
+            if (success) {
+                alert(`⚠️ Entity '${target}' has been quarantined! All transmission vectors have been severed. Re-running simulation to observe containment.`);
+                requestSimulation();
+            }
+        });
+    }
+
+    // 13. Initial Boot: Apply saved theme and load Case 1 (Financial Panic)
     initTheme();
     loadPresetTopology('financial_panic');
 });

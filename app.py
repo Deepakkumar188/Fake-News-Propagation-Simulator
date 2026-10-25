@@ -7,7 +7,7 @@ and comparative traversal analysis.
 import os
 from flask import Flask, render_template, request, jsonify
 from core.graph import Graph
-from core.algorithms import simulate_bfs, simulate_dfs, compare_algorithms
+from core.algorithms import simulate_bfs, simulate_dfs, compare_algorithms, simulate_race
 from core.presets import get_preset_network, list_preset_metadata
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
@@ -82,6 +82,32 @@ def simulate():
 
         return jsonify(result)
 
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/simulate/race", methods=["POST"])
+def simulate_race_endpoint():
+    """Run dual-wave Rumor vs Fact-Checker race on the provided graph."""
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No JSON payload provided."}), 400
+
+    graph_data = data.get("graph")
+    rumor_source = data.get("rumor_source")
+    fact_source = data.get("fact_source")
+    delay = int(data.get("delay", 1))
+
+    if not graph_data or not graph_data.get("nodes"):
+        return jsonify({"error": "Graph cannot be empty."}), 400
+
+    if not rumor_source or not fact_source:
+        return jsonify({"error": "Both rumor origin and fact-checker origin are required."}), 400
+
+    try:
+        graph = Graph.from_dict(graph_data)
+        result = simulate_race(graph, rumor_source, fact_source, delay)
+        return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

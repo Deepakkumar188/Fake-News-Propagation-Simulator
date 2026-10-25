@@ -32,9 +32,19 @@ class NetworkVisualizer {
                     highlight: { background: '#fbbf24', border: '#f59e0b' }
                 },
                 infected: {
-                    background: '#10b981',
-                    border: '#047857',
-                    highlight: { background: '#34d399', border: '#10b981' }
+                    background: '#f43f5e',
+                    border: '#be123c',
+                    highlight: { background: '#fb7185', border: '#f43f5e' }
+                },
+                inoculated: {
+                    background: '#00f2fe',
+                    border: '#0284c7',
+                    highlight: { background: '#38bdf8', border: '#00f2fe' }
+                },
+                debunked: {
+                    background: '#8b5cf6',
+                    border: '#6d28d9',
+                    highlight: { background: '#a78bfa', border: '#8b5cf6' }
                 },
                 fontColor: '#f8fafc',
                 edgeColor: 'rgba(56, 189, 248, 0.25)',
@@ -57,9 +67,19 @@ class NetworkVisualizer {
                     highlight: { background: '#f59e0b', border: '#d97706' }
                 },
                 infected: {
-                    background: '#059669',
-                    border: '#065f46',
-                    highlight: { background: '#10b981', border: '#059669' }
+                    background: '#e11d48',
+                    border: '#9f1239',
+                    highlight: { background: '#f43f5e', border: '#e11d48' }
+                },
+                inoculated: {
+                    background: '#0284c7',
+                    border: '#0369a1',
+                    highlight: { background: '#38bdf8', border: '#0284c7' }
+                },
+                debunked: {
+                    background: '#7c3aed',
+                    border: '#5b21b6',
+                    highlight: { background: '#a78bfa', border: '#7c3aed' }
                 },
                 fontColor: '#0f172a',
                 edgeColor: 'rgba(100, 116, 139, 0.4)',
@@ -247,6 +267,21 @@ class NetworkVisualizer {
         });
         this.edgesDataSet.remove(connectedEdges.map(e => e.id));
         this.nodesDataSet.remove(id);
+        return true;
+    }
+
+    quarantineNode(id) {
+        if (!id || !this.nodesDataSet.get(id)) return false;
+        const connectedEdges = this.edgesDataSet.get({
+            filter: e => e.from === id || e.to === id
+        });
+        this.edgesDataSet.remove(connectedEdges.map(e => e.id));
+        this.nodesDataSet.update({
+            id: id,
+            color: { background: '#f59e0b', border: '#b45309' },
+            title: `[QUARANTINED ENTITY - TRANSMISSION SEVERED]\nID: ${id}`,
+            shadow: { enabled: true, color: '#f59e0b', size: 16 }
+        });
         return true;
     }
 

@@ -2,12 +2,13 @@
 
 import unittest
 from core.graph import Graph
-from core.algorithms import simulate_bfs, simulate_dfs, compare_algorithms
+from core.algorithms import simulate_bfs, simulate_dfs, compare_algorithms, simulate_race
 from core.presets import (
     create_linear_chain_network,
     create_star_network,
     create_cyclic_network,
-    create_disconnected_network
+    create_disconnected_network,
+    create_financial_panic_network
 )
 
 
@@ -71,6 +72,14 @@ class TestAlgorithms(unittest.TestCase):
         self.assertIn("bfs", comp)
         self.assertIn("dfs", comp)
         self.assertEqual(comp["bfs"]["reached_count"], comp["dfs"]["reached_count"])
+
+    def test_race_simulation(self):
+        g = create_financial_panic_network()
+        race = simulate_race(g, "Deepfake_Seed", "SEC_FactCheck", fact_delay=1)
+        self.assertEqual(race["algorithm"], "RACE")
+        self.assertGreater(len(race["steps"]), 0)
+        self.assertIn("containment_rate", race["summary"])
+        self.assertGreater(len(race["time_series"]), 0)
 
 
 if __name__ == "__main__":

@@ -661,7 +661,9 @@ body:not(.light-theme) .btn-amber {
 }
 .color-source { background: var(--neon-rose); box-shadow: 0 0 8px var(--neon-rose); }
 .color-active { background: var(--neon-amber); box-shadow: 0 0 8px var(--neon-amber); }
-.color-infected { background: var(--neon-emerald); box-shadow: 0 0 8px var(--neon-emerald); }
+.color-infected { background: var(--neon-rose); box-shadow: 0 0 8px var(--neon-rose); }
+.color-inoculated { background: var(--neon-cyan); box-shadow: 0 0 8px var(--neon-cyan); }
+.color-debunked { background: var(--neon-violet); box-shadow: 0 0 8px var(--neon-violet); }
 .color-unvisited { background: #94a3b8; }
 body:not(.light-theme) .color-unvisited { background: #334155; }
 
@@ -755,6 +757,16 @@ body:not(.light-theme) .color-unvisited { background: #334155; }
 .dock-btn-cyan:hover {
     background: rgba(14, 165, 233, 0.3);
     box-shadow: 0 0 12px rgba(14, 165, 233, 0.3);
+}
+
+.dock-btn-warning {
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--neon-amber);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+}
+.dock-btn-warning:hover {
+    background: rgba(245, 158, 11, 0.28);
+    box-shadow: 0 0 12px var(--neon-amber-glow);
 }
 
 .dock-btn-danger {
@@ -1056,11 +1068,24 @@ body:not(.light-theme) .gauge-track {
     margin-top: 2px;
 }
 
+.chart-canvas-wrapper {
+    background: var(--terminal-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+}
+
 .glow-card-infected {
-    border-color: rgba(16, 185, 129, 0.4);
+    border-color: rgba(244, 63, 94, 0.4);
+}
+.glow-card-inoculated {
+    border-color: rgba(0, 242, 254, 0.4);
+}
+.glow-card-debunked {
+    border-color: rgba(139, 92, 246, 0.4);
 }
 .glow-card-unreached {
-    border-color: rgba(244, 63, 94, 0.4);
+    border-color: rgba(16, 185, 129, 0.4);
 }
 
 /* Cascade Pathway */

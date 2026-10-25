@@ -13,6 +13,9 @@
     <!-- Vis.js Network Library -->
     <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
 
+    <!-- Chart.js for Real-Time S-Curve Diffusion Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <!-- Custom Professional Stylesheet -->
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
@@ -32,9 +35,9 @@
                 <div class="brand-text">
                     <div class="brand-name-row">
                         <span class="brand-name">INFOCASCADE</span>
-                        <span class="brand-version">v2.5 PRO</span>
+                        <span class="brand-version">v2.7 ENTERPRISE</span>
                     </div>
-                    <p class="brand-tagline">Real-Time Social Network Misinformation Diffusion &amp; Propagation Dynamics</p>
+                    <p class="brand-tagline">Real-Time Social Network Misinformation Diffusion &amp; Defense Simulator</p>
                 </div>
             </div>
 
@@ -43,7 +46,7 @@
                 <div class="system-telemetry-tags">
                     <div class="sys-tag">
                         <span class="tag-label">ENGINE</span>
-                        <span class="tag-val text-cyan">Graph Diffusion Kernel</span>
+                        <span class="tag-val text-cyan">Multi-Source BFS / DFS</span>
                     </div>
                     <div class="sys-tag">
                         <span class="tag-label">TOPOLOGY</span>
@@ -65,7 +68,7 @@
 
         <!-- REAL-WORLD CASE STUDY BRIEFING BANNER -->
         <section class="case-study-banner" id="case-study-banner">
-            <div class="banner-badge">REAL-WORLD SCENARIO BRIEFING</div>
+            <div class="banner-badge">CASE STUDY BRIEFING</div>
             <div class="banner-content">
                 <strong id="case-title">Case 1: Deepfake Financial Market Panic</strong>
                 <span class="banner-separator">&mdash;</span>
@@ -85,17 +88,30 @@
                         <select id="algorithm-select" class="custom-select">
                             <option value="BFS" selected>BFS // Wavefront Broadcast (Queue)</option>
                             <option value="DFS">DFS // Targeted Whisper Chain (Stack)</option>
+                            <option value="RACE">⚔️ Truth vs. Rumor Race (Multi-Source)</option>
                         </select>
                     </div>
                 </div>
 
-                <!-- Source Selection -->
+                <!-- Rumor Origin (Patient Zero) -->
                 <div class="control-pod">
                     <label class="pod-label" for="source-select">
-                        <span class="pod-icon">🎯</span> Origin Vector (Patient Zero)
+                        <span class="pod-icon">🎯</span> Rumor Origin (Seed)
                     </label>
                     <div class="select-wrapper">
                         <select id="source-select" class="custom-select">
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Fact-Checker Origin (Visible in RACE mode) -->
+                <div class="control-pod" id="fact-source-pod" style="display: none;">
+                    <label class="pod-label" for="fact-source-select">
+                        <span class="pod-icon">🛡️</span> Fact-Checker Origin
+                    </label>
+                    <div class="select-wrapper">
+                        <select id="fact-source-select" class="custom-select">
                             <!-- Populated dynamically -->
                         </select>
                     </div>
@@ -169,10 +185,12 @@
                             <span class="panel-heading">Interactive Network Topology</span>
                         </div>
                         <div class="canvas-legend">
-                            <div class="legend-chip"><span class="chip-color color-source"></span> Origin (Seed)</div>
+                            <div class="legend-chip"><span class="chip-color color-source"></span> Rumor Seed</div>
                             <div class="legend-chip"><span class="chip-color color-active"></span> In-Transit</div>
-                            <div class="legend-chip"><span class="chip-color color-infected"></span> Compromised</div>
-                            <div class="legend-chip"><span class="chip-color color-unvisited"></span> Unaffected</div>
+                            <div class="legend-chip"><span class="chip-color color-infected"></span> Infected</div>
+                            <div class="legend-chip"><span class="chip-color color-inoculated"></span> Inoculated (Truth)</div>
+                            <div class="legend-chip"><span class="chip-color color-debunked"></span> Debunked</div>
+                            <div class="legend-chip"><span class="chip-color color-unvisited"></span> Unreached</div>
                         </div>
                     </div>
 
@@ -183,7 +201,7 @@
                     <div class="topology-editor-dock">
                         <div class="editor-cluster">
                             <span class="cluster-label">ADD ENTITY</span>
-                            <input type="text" id="new-node-id" placeholder="Entity Handle (e.g. Node_X)" class="dock-input">
+                            <input type="text" id="new-node-id" placeholder="Entity Handle" class="dock-input">
                             <select id="new-node-role" class="dock-select">
                                 <option value="Standard User">Standard Account</option>
                                 <option value="Influencer">Influencer / Hub</option>
@@ -202,7 +220,8 @@
                             <span class="dock-arrow">➔</span>
                             <select id="edge-to-select" class="dock-select"></select>
                             <button id="btn-add-edge" class="dock-btn dock-btn-cyan">+ Link</button>
-                            <button id="btn-delete-node" class="dock-btn dock-btn-danger" title="Remove selected node">Remove Entity</button>
+                            <button id="btn-quarantine-node" class="dock-btn dock-btn-warning" title="Isolate selected entity to cut transmission vector">⚠️ Quarantine</button>
+                            <button id="btn-delete-node" class="dock-btn dock-btn-danger" title="Remove selected node">Remove</button>
                         </div>
                     </div>
                 </div>
@@ -245,11 +264,22 @@
                         <!-- LIVE STEP-BY-STEP TRANSMISSION TELEMETRY -->
                         <div class="telemetry-box execution-trace-box">
                             <div class="box-header">
-                                <span class="box-title">Step-by-Step Propagation Log</span>
+                                <span class="box-title">Step-by-Step Dissemination Log</span>
                                 <span class="badge-step" id="step-counter-badge">Step 0 / 0</span>
                             </div>
                             <div class="terminal-log-output" id="step-explanation-text">
                                 <span class="terminal-prefix">&gt;&gt;</span> System primed. Select an origin entity and execute traversal to monitor information wavefront dynamics.
+                            </div>
+                        </div>
+
+                        <!-- REAL-TIME TEMPORAL S-CURVE DIFFUSION CHART -->
+                        <div class="telemetry-box chart-box">
+                            <div class="box-header">
+                                <span class="box-title">Temporal Diffusion Curve (S-Curve)</span>
+                                <span class="badge-tech">TIME-SERIES ANALYTICS</span>
+                            </div>
+                            <div class="chart-canvas-wrapper" style="position: relative; height: 135px; width: 100%;">
+                                <canvas id="diffusionChart"></canvas>
                             </div>
                         </div>
 
@@ -281,26 +311,26 @@
                                     <div class="stat-desc">Active Vectors (E)</div>
                                 </div>
                                 <div class="stat-card glow-card-infected">
-                                    <div class="stat-num text-emerald" id="stat-reached-nodes">0</div>
-                                    <div class="stat-desc">Compromised</div>
+                                    <div class="stat-num text-rose" id="stat-reached-nodes">0</div>
+                                    <div class="stat-desc">Infected (Rumor)</div>
                                 </div>
-                                <div class="stat-card glow-card-unreached">
-                                    <div class="stat-num text-rose" id="stat-unreached-nodes">0</div>
-                                    <div class="stat-desc">Immune / Unreached</div>
+                                <div class="stat-card glow-card-inoculated">
+                                    <div class="stat-num text-cyan" id="stat-inoculated-nodes">0</div>
+                                    <div class="stat-desc">Inoculated (Truth)</div>
+                                </div>
+                                <div class="stat-card glow-card-debunked">
+                                    <div class="stat-num text-violet" id="stat-debunked-nodes">0</div>
+                                    <div class="stat-desc">Debunked (Neutral)</div>
                                 </div>
                                 <div class="stat-card">
-                                    <div class="stat-num text-cyan" id="stat-current-level">0</div>
-                                    <div class="stat-desc">Wavefront Depth</div>
-                                </div>
-                                <div class="stat-card">
-                                    <div class="stat-num text-violet" id="stat-max-depth">0</div>
-                                    <div class="stat-desc">Max Path Latency</div>
+                                    <div class="stat-num text-emerald" id="stat-unreached-nodes">0</div>
+                                    <div class="stat-desc">Immune / Safe</div>
                                 </div>
                             </div>
 
                             <!-- Cascading Sequence Pathway -->
                             <div class="pathway-card">
-                                <div class="pathway-label">Active Cascade Sequence:</div>
+                                <div class="pathway-label">Active Dissemination Pathway:</div>
                                 <div id="traversal-sequence-list" class="pathway-chips-container">
                                     <span class="pathway-idle">Awaiting dissemination trigger...</span>
                                 </div>
@@ -416,6 +446,15 @@
                                     <li><strong>LIFO Stack Buffer:</strong> Prioritizes downstream depth over lateral exploration.</li>
                                     <li><strong>Loop Immunity:</strong> Visited set prevents infinite forwarding loops along cyclic social rings.</li>
                                 </ul>
+                            </section>
+
+                            <section class="theory-card">
+                                <h4>4. Multi-Source Defense (Truth vs. Rumor Race)</h4>
+                                <p>
+                                    Simultaneous multi-source traversal models information containment. When authoritative verification nodes 
+                                    broadcast counter-evidence, their wavefront inoculates uninfected nodes and neutralizes infected ones, 
+                                    halting the viral cascade before critical saturation is reached.
+                                </p>
                             </section>
                         </div>
                     </div>

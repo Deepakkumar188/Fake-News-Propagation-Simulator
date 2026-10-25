@@ -436,3 +436,263 @@ def compare_algorithms(graph: Graph, source: str) -> Dict[str, Any]:
             f"Peak auxiliary memory: BFS Queue reached {bfs_max_queue} elements; DFS Stack reached {dfs_max_stack} elements."
         ]
     }
+
+
+def simulate_race(graph: Graph, rumor_source: str, fact_source: str, fact_delay: int = 1) -> Dict[str, Any]:
+    """Simulate a dual-wave race: Rumor Propagation vs. Fact-Checker Counter-Dissemination.
+    
+    Uses Multi-Source Simultaneous BFS. The Rumor starts immediately from `rumor_source`.
+    After a realistic lag (`fact_delay`), the Fact-Checker launches the truth wave from `fact_source`.
+    
+    Nodes reached by Truth first are 'Inoculated' (Immune).
+    Nodes reached by Rumor first are 'Infected'.
+    If Truth later reaches an Infected node, it 'Debunks / Neutralizes' the misinformation!
+    """
+    rumor_source = str(rumor_source).strip()
+    fact_source = str(fact_source).strip()
+
+    if not graph.has_node(rumor_source):
+        raise KeyError(f"Rumor source '{rumor_source}' does not exist.")
+    if not graph.has_node(fact_source):
+        raise KeyError(f"Fact-Checker source '{fact_source}' does not exist.")
+
+    total_nodes = graph.get_node_count()
+    step_log: List[Dict[str, Any]] = []
+
+    # Queues for Rumor and Fact-Check waves
+    rumor_queue: deque = deque([rumor_source])
+    fact_queue: deque = deque()
+
+    # States
+    infected: Set[str] = {rumor_source}
+    inoculated: Set[str] = set()
+    debunked: Set[str] = set()
+
+    step_counter = 1
+    time_series = [{
+        "step": 1,
+        "rumor_count": 1,
+        "fact_count": 0,
+        "debunked_count": 0
+    }]
+
+    # Step 1: Rumor Origin Launch
+    step_log.append({
+        "step_id": step_counter,
+        "algorithm": "RACE",
+        "wave_type": "RUMOR",
+        "action": "RUMOR_ORIGIN",
+        "current_node": rumor_source,
+        "neighbor_node": None,
+        "active_edge": None,
+        "queue_state": list(rumor_queue),
+        "stack_state": [],
+        "infected_nodes": list(infected),
+        "inoculated_nodes": list(inoculated),
+        "debunked_nodes": list(debunked),
+        "visited_nodes": list(infected),
+        "time_series": list(time_series),
+        "explanation": f"Disinformation outbreak initialized at '{rumor_source}' (Patient Zero). Wavefront active."
+    })
+
+    clock_tick = 1
+
+    while rumor_queue or fact_queue or clock_tick <= fact_delay + 1:
+        # Check if Fact-Checker activates at this clock tick
+        if clock_tick == fact_delay + 1 and fact_source not in inoculated and fact_source not in debunked:
+            if fact_source in infected:
+                debunked.add(fact_source)
+                infected.remove(fact_source)
+            else:
+                inoculated.add(fact_source)
+            fact_queue.append(fact_source)
+
+            step_counter += 1
+            time_series.append({
+                "step": step_counter,
+                "rumor_count": len(infected),
+                "fact_count": len(inoculated),
+                "debunked_count": len(debunked)
+            })
+
+            step_log.append({
+                "step_id": step_counter,
+                "algorithm": "RACE",
+                "wave_type": "FACT_CHECK",
+                "action": "FACT_CHECK_LAUNCH",
+                "current_node": fact_source,
+                "neighbor_node": None,
+                "active_edge": None,
+                "queue_state": list(fact_queue),
+                "stack_state": [],
+                "infected_nodes": list(infected),
+                "inoculated_nodes": list(inoculated),
+                "debunked_nodes": list(debunked),
+                "visited_nodes": list(infected | inoculated | debunked),
+                "time_series": list(time_series),
+                "explanation": f"Fact-Checker counter-wave mobilized at '{fact_source}'. Truth broadcast initiated to inoculate network."
+            })
+
+        # Process one step of Rumor Wave
+        if rumor_queue:
+            curr_rumor = rumor_queue.popleft()
+            for neighbor in graph.get_neighbors(curr_rumor):
+                if neighbor not in infected and neighbor not in inoculated and neighbor not in debunked:
+                    infected.add(neighbor)
+                    rumor_queue.append(neighbor)
+                    step_counter += 1
+
+                    time_series.append({
+                        "step": step_counter,
+                        "rumor_count": len(infected),
+                        "fact_count": len(inoculated),
+                        "debunked_count": len(debunked)
+                    })
+
+                    step_log.append({
+                        "step_id": step_counter,
+                        "algorithm": "RACE",
+                        "wave_type": "RUMOR",
+                        "action": "RUMOR_SPREAD",
+                        "current_node": curr_rumor,
+                        "neighbor_node": neighbor,
+                        "active_edge": [curr_rumor, neighbor],
+                        "queue_state": list(rumor_queue),
+                        "stack_state": [],
+                        "infected_nodes": list(infected),
+                        "inoculated_nodes": list(inoculated),
+                        "debunked_nodes": list(debunked),
+                        "visited_nodes": list(infected | inoculated | debunked),
+                        "time_series": list(time_series),
+                        "explanation": f"Rumor breached '{neighbor}' via '{curr_rumor}'. Entity compromised."
+                    })
+                elif neighbor in inoculated:
+                    step_counter += 1
+                    step_log.append({
+                        "step_id": step_counter,
+                        "algorithm": "RACE",
+                        "wave_type": "RUMOR",
+                        "action": "BLOCKED_BY_TRUTH",
+                        "current_node": curr_rumor,
+                        "neighbor_node": neighbor,
+                        "active_edge": [curr_rumor, neighbor],
+                        "queue_state": list(rumor_queue),
+                        "stack_state": [],
+                        "infected_nodes": list(infected),
+                        "inoculated_nodes": list(inoculated),
+                        "debunked_nodes": list(debunked),
+                        "visited_nodes": list(infected | inoculated | debunked),
+                        "time_series": list(time_series),
+                        "explanation": f"Rumor attempted transmission to '{neighbor}', but user is already Inoculated by Fact-Check! Rumor blocked."
+                    })
+
+        # Process one step of Fact-Checker Wave
+        if fact_queue:
+            curr_fact = fact_queue.popleft()
+            for neighbor in graph.get_neighbors(curr_fact):
+                if neighbor in infected:
+                    # Debunk / Neutralize infected node!
+                    infected.remove(neighbor)
+                    debunked.add(neighbor)
+                    fact_queue.append(neighbor)
+                    step_counter += 1
+
+                    time_series.append({
+                        "step": step_counter,
+                        "rumor_count": len(infected),
+                        "fact_count": len(inoculated),
+                        "debunked_count": len(debunked)
+                    })
+
+                    step_log.append({
+                        "step_id": step_counter,
+                        "algorithm": "RACE",
+                        "wave_type": "FACT_CHECK",
+                        "action": "DEBUNK_NEUTRALIZE",
+                        "current_node": curr_fact,
+                        "neighbor_node": neighbor,
+                        "active_edge": [curr_fact, neighbor],
+                        "queue_state": list(fact_queue),
+                        "stack_state": [],
+                        "infected_nodes": list(infected),
+                        "inoculated_nodes": list(inoculated),
+                        "debunked_nodes": list(debunked),
+                        "visited_nodes": list(infected | inoculated | debunked),
+                        "time_series": list(time_series),
+                        "explanation": f"Fact-Check intercepted compromised entity '{neighbor}'! Misinformation neutralized and debunked."
+                    })
+                elif neighbor not in inoculated and neighbor not in debunked:
+                    # Inoculate healthy node
+                    inoculated.add(neighbor)
+                    fact_queue.append(neighbor)
+                    step_counter += 1
+
+                    time_series.append({
+                        "step": step_counter,
+                        "rumor_count": len(infected),
+                        "fact_count": len(inoculated),
+                        "debunked_count": len(debunked)
+                    })
+
+                    step_log.append({
+                        "step_id": step_counter,
+                        "algorithm": "RACE",
+                        "wave_type": "FACT_CHECK",
+                        "action": "TRUTH_INOCULATE",
+                        "current_node": curr_fact,
+                        "neighbor_node": neighbor,
+                        "active_edge": [curr_fact, neighbor],
+                        "queue_state": list(fact_queue),
+                        "stack_state": [],
+                        "infected_nodes": list(infected),
+                        "inoculated_nodes": list(inoculated),
+                        "debunked_nodes": list(debunked),
+                        "visited_nodes": list(infected | inoculated | debunked),
+                        "time_series": list(time_series),
+                        "explanation": f"Truth wave reached '{neighbor}'. Entity verified and Inoculated against rumor transmission."
+                    })
+
+        clock_tick += 1
+
+    # Final wrap-up
+    step_counter += 1
+    unreached = [n for n in graph.get_nodes() if n not in infected and n not in inoculated and n not in debunked]
+
+    step_log.append({
+        "step_id": step_counter,
+        "algorithm": "RACE",
+        "wave_type": "BATTLE_END",
+        "action": "RACE_COMPLETE",
+        "current_node": None,
+        "neighbor_node": None,
+        "active_edge": None,
+        "queue_state": [],
+        "stack_state": [],
+        "infected_nodes": list(infected),
+        "inoculated_nodes": list(inoculated),
+        "debunked_nodes": list(debunked),
+        "visited_nodes": list(infected | inoculated | debunked),
+        "time_series": list(time_series),
+        "explanation": f"Diffusion stabilized. Infected: {len(infected)}, Debunked: {len(debunked)}, Inoculated: {len(inoculated)}, Immune/Unreached: {len(unreached)}."
+    })
+
+    return {
+        "algorithm": "RACE",
+        "rumor_source": rumor_source,
+        "fact_source": fact_source,
+        "steps": step_log,
+        "total_steps": len(step_log),
+        "time_series": time_series,
+        "summary": {
+            "total_nodes": total_nodes,
+            "total_edges": graph.get_edge_count(),
+            "infected_count": len(infected),
+            "debunked_count": len(debunked),
+            "inoculated_count": len(inoculated),
+            "unreached_count": len(unreached),
+            "containment_rate": round(((len(inoculated) + len(debunked)) / total_nodes * 100), 1) if total_nodes > 0 else 0,
+            "data_structure": "Dual FIFO Queues (Multi-Source BFS)",
+            "time_complexity": "O(V + E)",
+            "space_complexity": "O(V)"
+        }
+    }
