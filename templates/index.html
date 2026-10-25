@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>INFOCASCADE // Fake News Propagation & Network Diffusion Simulator</title>
+    
+    <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Vis.js Network Library -->
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+
+    <!-- Custom Professional Stylesheet -->
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <!-- Ambient Background Light Orbs -->
+    <div class="ambient-glow glow-1"></div>
+    <div class="ambient-glow glow-2"></div>
+
+    <div class="app-layout">
+        <!-- TOP COMMAND & INTELLIGENCE HEADER -->
+        <header class="app-header">
+            <div class="brand-cluster">
+                <div class="brand-emblem">
+                    <div class="emblem-core"></div>
+                    <div class="emblem-ring"></div>
+                </div>
+                <div class="brand-text">
+                    <div class="brand-name-row">
+                        <span class="brand-name">INFOCASCADE</span>
+                        <span class="brand-version">v2.5 PRO</span>
+                    </div>
+                    <p class="brand-tagline">Real-Time Social Network Misinformation Diffusion &amp; Propagation Dynamics</p>
+                </div>
+            </div>
+
+            <div class="header-actions-cluster">
+                <!-- Telemetry Tags -->
+                <div class="system-telemetry-tags">
+                    <div class="sys-tag">
+                        <span class="tag-label">ENGINE</span>
+                        <span class="tag-val text-cyan">Graph Diffusion Kernel</span>
+                    </div>
+                    <div class="sys-tag">
+                        <span class="tag-label">TOPOLOGY</span>
+                        <span class="tag-val text-emerald">Sparse Adjacency List</span>
+                    </div>
+                    <div class="sys-tag">
+                        <span class="tag-label">COMPLEXITY</span>
+                        <span class="tag-val text-violet">&Omicron;(V + E)</span>
+                    </div>
+                </div>
+
+                <!-- Theme Switcher Button (Dark / Light Mode) -->
+                <button id="theme-toggle-btn" class="theme-switch-btn" title="Toggle Light / Dark Mode">
+                    <span class="theme-icon" id="theme-icon">☀️</span>
+                    <span class="theme-text" id="theme-text">Light Mode</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- REAL-WORLD CASE STUDY BRIEFING BANNER -->
+        <section class="case-study-banner" id="case-study-banner">
+            <div class="banner-badge">REAL-WORLD SCENARIO BRIEFING</div>
+            <div class="banner-content">
+                <strong id="case-title">Case 1: Deepfake Financial Market Panic</strong>
+                <span class="banner-separator">&mdash;</span>
+                <span id="case-desc">Synthetic video causes automated trading bots to scrape and dump assets before SEC fact-checkers verify.</span>
+            </div>
+        </section>
+
+        <!-- COMMAND DECK (CONTROLS & PARAMETERS) -->
+        <section class="command-deck">
+            <div class="deck-row">
+                <!-- Algorithm Selection -->
+                <div class="control-pod">
+                    <label class="pod-label" for="algorithm-select">
+                        <span class="pod-icon">⚙</span> Traversal Model
+                    </label>
+                    <div class="select-wrapper">
+                        <select id="algorithm-select" class="custom-select">
+                            <option value="BFS" selected>BFS // Wavefront Broadcast (Queue)</option>
+                            <option value="DFS">DFS // Targeted Whisper Chain (Stack)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Source Selection -->
+                <div class="control-pod">
+                    <label class="pod-label" for="source-select">
+                        <span class="pod-icon">🎯</span> Origin Vector (Patient Zero)
+                    </label>
+                    <div class="select-wrapper">
+                        <select id="source-select" class="custom-select">
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Real-World Preset Scenarios -->
+                <div class="control-pod">
+                    <label class="pod-label" for="preset-select">
+                        <span class="pod-icon">🌐</span> Real-World Scenarios
+                    </label>
+                    <div class="select-wrapper">
+                        <select id="preset-select" class="custom-select">
+                            <option value="financial_panic" selected>Case 1: Deepfake Financial Market Panic</option>
+                            <option value="election_echo">Case 2: Polarized Political Echo Chambers</option>
+                            <option value="health_rumor">Case 3: Medical Misinformation &amp; Fact-Checkers</option>
+                            <option value="botnet_campaign">Case 4: Coordinated Botnet Astroturfing (Star)</option>
+                            <option value="whatsapp_chain">Case 5: Viral WhatsApp Forwarding Chain (Directed)</option>
+                            <option value="cyclic">Case 6: Cyclic Rumor Ring with Cross-Ties</option>
+                            <option value="disconnected">Case 7: Segmented Closed Communities</option>
+                            <option value="default">Case 8: Mixed Heterogeneous Social Network</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Speed Control -->
+                <div class="control-pod speed-pod">
+                    <div class="speed-header">
+                        <label class="pod-label" for="speed-slider">
+                            <span class="pod-icon">⚡</span> Simulation Rate
+                        </label>
+                        <span id="speed-val" class="speed-readout">600 ms</span>
+                    </div>
+                    <div class="slider-wrapper">
+                        <input type="range" id="speed-slider" min="150" max="1800" step="50" value="600" class="neon-slider">
+                    </div>
+                </div>
+
+                <!-- Simulation Action Buttons -->
+                <div class="action-buttons-deck">
+                    <button id="btn-start" class="ctrl-btn btn-glow-primary" title="Start Simulation">
+                        <span class="icon">▶</span> Run
+                    </button>
+                    <button id="btn-pause" class="ctrl-btn btn-amber" title="Pause Simulation" disabled>
+                        <span class="icon">⏸</span> Pause
+                    </button>
+                    <button id="btn-step-prev" class="ctrl-btn btn-glass" title="Step Back" disabled>
+                        <span class="icon">⏮</span>
+                    </button>
+                    <button id="btn-step-next" class="ctrl-btn btn-glass" title="Step Forward">
+                        <span class="icon">⏭</span>
+                    </button>
+                    <button id="btn-reset" class="ctrl-btn btn-rose" title="Reset Simulation">
+                        <span class="icon">↺</span> Reset
+                    </button>
+                    <button id="btn-compare" class="ctrl-btn btn-glow-violet" title="Run Comparative Benchmark">
+                        <span class="icon">⚖</span> Benchmark
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- MAIN DUAL-PANE COCKPIT -->
+        <main class="cockpit-grid">
+            <!-- LEFT: NETWORK TOPOLOGY RADAR & CANVAS -->
+            <section class="canvas-panel">
+                <div class="glass-card full-height">
+                    <!-- Canvas Header with Status Legend -->
+                    <div class="card-top-bar">
+                        <div class="title-with-beacon">
+                            <span class="beacon-pulse"></span>
+                            <span class="panel-heading">Interactive Network Topology</span>
+                        </div>
+                        <div class="canvas-legend">
+                            <div class="legend-chip"><span class="chip-color color-source"></span> Origin (Seed)</div>
+                            <div class="legend-chip"><span class="chip-color color-active"></span> In-Transit</div>
+                            <div class="legend-chip"><span class="chip-color color-infected"></span> Compromised</div>
+                            <div class="legend-chip"><span class="chip-color color-unvisited"></span> Unaffected</div>
+                        </div>
+                    </div>
+
+                    <!-- Interactive Network Canvas -->
+                    <div id="network-canvas" class="vis-canvas"></div>
+
+                    <!-- Topology Editor Bar -->
+                    <div class="topology-editor-dock">
+                        <div class="editor-cluster">
+                            <span class="cluster-label">ADD ENTITY</span>
+                            <input type="text" id="new-node-id" placeholder="Entity Handle (e.g. Node_X)" class="dock-input">
+                            <select id="new-node-role" class="dock-select">
+                                <option value="Standard User">Standard Account</option>
+                                <option value="Influencer">Influencer / Hub</option>
+                                <option value="Journalist">Media Outlet</option>
+                                <option value="Fact Checker">Verification Node</option>
+                                <option value="Bot">Automated Bot</option>
+                            </select>
+                            <button id="btn-add-node" class="dock-btn dock-btn-cyan">+ Entity</button>
+                        </div>
+
+                        <div class="dock-separator"></div>
+
+                        <div class="editor-cluster">
+                            <span class="cluster-label">CONNECT VECTOR</span>
+                            <select id="edge-from-select" class="dock-select"></select>
+                            <span class="dock-arrow">➔</span>
+                            <select id="edge-to-select" class="dock-select"></select>
+                            <button id="btn-add-edge" class="dock-btn dock-btn-cyan">+ Link</button>
+                            <button id="btn-delete-node" class="dock-btn dock-btn-danger" title="Remove selected node">Remove Entity</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- RIGHT: TELEMETRY, MEMORY REGISTERS & ANALYTICS -->
+            <aside class="telemetry-panel">
+                <div class="glass-card full-height telemetry-card">
+                    <!-- Navigation Tabs -->
+                    <div class="telemetry-nav-tabs">
+                        <button class="nav-tab active" data-tab="tab-telemetry">
+                            <span class="tab-icon">📊</span> Propagation Telemetry
+                        </button>
+                        <button class="nav-tab" data-tab="tab-comparison">
+                            <span class="tab-icon">⚖</span> Comparative Matrix
+                        </button>
+                        <button class="nav-tab" data-tab="tab-theory">
+                            <span class="tab-icon">🔬</span> Theoretical Kernel
+                        </button>
+                    </div>
+
+                    <!-- TAB 1: REAL-TIME TELEMETRY -->
+                    <div id="tab-telemetry" class="tab-pane active">
+                        <!-- MEMORY REGISTER INSPECTOR -->
+                        <div class="telemetry-box memory-box">
+                            <div class="box-header">
+                                <div class="box-title-group">
+                                    <span class="box-title" id="ds-title">Active Memory Buffer: FIFO Queue</span>
+                                    <span class="badge-tech" id="ds-mode-badge">FIFO QUEUE</span>
+                                </div>
+                                <span class="register-tag">REGISTER ADDR: 0x7F</span>
+                            </div>
+                            <div class="memory-chamber">
+                                <div id="ds-visualizer" class="memory-buffer-container">
+                                    <div class="buffer-idle-msg">Buffer idle. Initialize simulation to monitor memory allocations.</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- LIVE STEP-BY-STEP TRANSMISSION TELEMETRY -->
+                        <div class="telemetry-box execution-trace-box">
+                            <div class="box-header">
+                                <span class="box-title">Step-by-Step Propagation Log</span>
+                                <span class="badge-step" id="step-counter-badge">Step 0 / 0</span>
+                            </div>
+                            <div class="terminal-log-output" id="step-explanation-text">
+                                <span class="terminal-prefix">&gt;&gt;</span> System primed. Select an origin entity and execute traversal to monitor information wavefront dynamics.
+                            </div>
+                        </div>
+
+                        <!-- PROPAGATION METRICS & GAUGES -->
+                        <div class="telemetry-box analytics-box">
+                            <div class="box-header">
+                                <span class="box-title">Network Penetration &amp; Impact Analytics</span>
+                            </div>
+
+                            <!-- Animated Penetration Gauge -->
+                            <div class="gauge-card">
+                                <div class="gauge-meta">
+                                    <span class="gauge-label">Total Viral Penetration</span>
+                                    <span id="stat-reach-pct" class="gauge-pct">0%</span>
+                                </div>
+                                <div class="gauge-track">
+                                    <div id="progress-bar" class="gauge-fill" style="width: 0%;"></div>
+                                </div>
+                            </div>
+
+                            <!-- Hex Metrics Grid -->
+                            <div class="metrics-dashboard-grid">
+                                <div class="stat-card">
+                                    <div class="stat-num text-slate" id="stat-total-nodes">0</div>
+                                    <div class="stat-desc">Network Entities (V)</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-num text-slate" id="stat-total-edges">0</div>
+                                    <div class="stat-desc">Active Vectors (E)</div>
+                                </div>
+                                <div class="stat-card glow-card-infected">
+                                    <div class="stat-num text-emerald" id="stat-reached-nodes">0</div>
+                                    <div class="stat-desc">Compromised</div>
+                                </div>
+                                <div class="stat-card glow-card-unreached">
+                                    <div class="stat-num text-rose" id="stat-unreached-nodes">0</div>
+                                    <div class="stat-desc">Immune / Unreached</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-num text-cyan" id="stat-current-level">0</div>
+                                    <div class="stat-desc">Wavefront Depth</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-num text-violet" id="stat-max-depth">0</div>
+                                    <div class="stat-desc">Max Path Latency</div>
+                                </div>
+                            </div>
+
+                            <!-- Cascading Sequence Pathway -->
+                            <div class="pathway-card">
+                                <div class="pathway-label">Active Cascade Sequence:</div>
+                                <div id="traversal-sequence-list" class="pathway-chips-container">
+                                    <span class="pathway-idle">Awaiting dissemination trigger...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB 2: COMPARATIVE DYNAMICS (BFS vs DFS) -->
+                    <div id="tab-comparison" class="tab-pane">
+                        <div class="benchmark-container">
+                            <div class="benchmark-hero">
+                                <h3 class="hero-title">Algorithmic Dissemination Matrix</h3>
+                                <p class="hero-subtitle">Direct behavioral and topological comparison across identical graph structures.</p>
+                            </div>
+
+                            <div class="cyber-table-frame">
+                                <table class="cyber-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Metric / Dimension</th>
+                                            <th>Breadth-First Diffusion (BFS)</th>
+                                            <th>Depth-First Diffusion (DFS)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="comparison-table-body">
+                                        <tr>
+                                            <td><strong>Memory Mechanism</strong></td>
+                                            <td><span class="table-tag text-cyan">FIFO Ingestion Buffer</span></td>
+                                            <td><span class="table-tag text-violet">LIFO Branch Stack</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Propagation Profile</strong></td>
+                                            <td>Omnidirectional Wavefront (Broadcast)</td>
+                                            <td>Penetrative Cascade (Whisper Vector)</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Shortest Path Guarantee</strong></td>
+                                            <td><span class="pill-badge pill-success">&#10003; Minimum Latency</span></td>
+                                            <td><span class="pill-badge pill-danger">&#10007; Non-Optimal Detours</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Total State Transitions</strong></td>
+                                            <td id="comp-bfs-steps" class="font-mono text-cyan">-</td>
+                                            <td id="comp-dfs-steps" class="font-mono text-violet">-</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Peak Memory Allocation</strong></td>
+                                            <td id="comp-bfs-memory" class="font-mono">-</td>
+                                            <td id="comp-dfs-memory" class="font-mono">-</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Sequential Path</strong></td>
+                                            <td id="comp-bfs-order" class="code-stream text-cyan">-</td>
+                                            <td id="comp-dfs-order" class="code-stream text-violet">-</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="insights-card">
+                                <div class="insights-title">
+                                    <span class="insights-icon">💡</span> Dynamic Network Insights
+                                </div>
+                                <ul id="comparison-observations-list" class="insights-items">
+                                    <li>Click <strong>⚖ Benchmark</strong> above to run dual-vector comparative execution.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB 3: THEORETICAL FOUNDATIONS -->
+                    <div id="tab-theory" class="tab-pane">
+                        <div class="theory-scrollable">
+                            <h3 class="theory-main-title">Network Information Dynamics</h3>
+
+                            <section class="theory-card">
+                                <h4>1. Sparse Adjacency Representation</h4>
+                                <p>
+                                    Social information graphs are strictly sparse, meaning active interpersonal relationships 
+                                    represent a tiny fraction of the total possible edge space ($|E| \ll |V|^2$).
+                                </p>
+                                <div class="math-banner">
+                                    <span>Space Footprint: &Omicron;(V + E)</span> &bull; 
+                                    <span>Neighbor Iteration: &Omicron;(deg(u))</span>
+                                </div>
+                                <p>
+                                    By using an Adjacency List rather than a dense $V \times V$ matrix, memory consumption is minimized 
+                                    and disconnected communities are tracked without wasting allocations on null vectors.
+                                </p>
+                            </section>
+
+                            <section class="theory-card">
+                                <h4>2. Breadth-First Diffusion (Radial Broadcast)</h4>
+                                <p>
+                                    BFS processes information in concentric hop frontiers. An entity at hop distance $k$ 
+                                    receives the transmission before any entity at distance $k + 1$.
+                                </p>
+                                <ul>
+                                    <li><strong>Computational Complexity:</strong> &Omicron;(V + E) deterministic traversal time.</li>
+                                    <li><strong>FIFO Queue Buffer:</strong> Maintains chronological discovery order without priority recalculation.</li>
+                                    <li><strong>Minimum Hop Optimality:</strong> Guaranteed to discover the shortest hop-path from Patient Zero.</li>
+                                </ul>
+                            </section>
+
+                            <section class="theory-card">
+                                <h4>3. Depth-First Diffusion (Penetrative Chain)</h4>
+                                <p>
+                                    DFS models high-velocity personal cascades where information travels sequentially down 
+                                    a single chain of forwarders until encountering an infected node or dead end, subsequently backtracking.
+                                </p>
+                                <ul>
+                                    <li><strong>Computational Complexity:</strong> &Omicron;(V + E) traversal time.</li>
+                                    <li><strong>LIFO Stack Buffer:</strong> Prioritizes downstream depth over lateral exploration.</li>
+                                    <li><strong>Loop Immunity:</strong> Visited set prevents infinite forwarding loops along cyclic social rings.</li>
+                                </ul>
+                            </section>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </main>
+    </div>
+
+    <!-- SCRIPTS -->
+    <script src="/static/js/network.js"></script>
+    <script src="/static/js/data_structures.js"></script>
+    <script src="/static/js/simulation.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
