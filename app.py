@@ -21,7 +21,13 @@ from core.algorithms import (
 from core.presets import get_preset_network, list_preset_metadata
 from core.credibility_analyzer import analyze_news_credibility
 
-app = Flask(__name__, template_folder="templates", static_folder="static")
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+app = Flask(
+    __name__,
+    template_folder=os.path.join(BASE_DIR, "templates"),
+    static_folder=os.path.join(BASE_DIR, "static"),
+    static_url_path="/static"
+)
 app.config["SECRET_KEY"] = os.urandom(24)
 
 
