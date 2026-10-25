@@ -8,6 +8,7 @@ propagation and counter-disinformation defense. It features:
 - PageRank & Betweenness Centrality Super-Spreader Detection
 """
 
+import random
 from collections import deque
 from typing import Dict, List, Set, Any, Optional, Tuple
 from core.graph import Graph
@@ -731,4 +732,322 @@ def simulate_race(graph: Graph, rumor_source: str, fact_source: str, fact_delay:
             "time_complexity": "O(V + E)",
             "space_complexity": "O(V)"
         }
+    }
+
+
+
+def simulate_sir(
+    graph: Graph,
+    source: str,
+    virality: float = 0.75,
+    recovery_rate: float = 0.35,
+    max_epochs: int = 25
+) -> Dict[str, Any]:
+    """Simulate Epidemic Rumor Diffusion using the SIR (Susceptible-Infected-Recovered) Model.
+    
+    States:
+      - S (Susceptible): Uninformed, can receive rumor if skepticism <= virality.
+      - I (Infected): Actively spreading the rumor across network vectors.
+      - R (Recovered / Immune): Lost interest or fact-checked; immune to further transmission.
+    """
+    source = str(source).strip()
+    if not graph.has_node(source):
+        raise KeyError(f"Source entity '{source}' does not exist.")
+
+    all_nodes = graph.get_nodes()
+    total_nodes = len(all_nodes)
+
+    susceptible: Set[str] = set(all_nodes) - {source}
+    infected: Set[str] = {source}
+    recovered: Set[str] = set()
+
+    step_log: List[Dict[str, Any]] = []
+    time_series: List[Dict[str, int]] = []
+    step_counter = 1
+
+    time_series.append({
+        "epoch": 0,
+        "susceptible": len(susceptible),
+        "infected": len(infected),
+        "recovered": len(recovered)
+    })
+
+    step_log.append({
+        "step_id": step_counter,
+        "algorithm": "SIR",
+        "action": "START",
+        "current_node": source,
+        "neighbor_node": None,
+        "active_edge": None,
+        "queue_state": list(infected),
+        "stack_state": [],
+        "susceptible_nodes": list(susceptible),
+        "infected_nodes": list(infected),
+        "recovered_nodes": list(recovered),
+        "time_series": list(time_series),
+        "explanation": f"Epidemic seed initiated at '{source}'. Entity marked as Infected (I)."
+    })
+
+    epoch = 0
+    while infected and epoch < max_epochs:
+        epoch += 1
+        newly_infected: Set[str] = set()
+        newly_recovered: Set[str] = set()
+
+        for curr in list(infected):
+            neighbors = graph.get_neighbors(curr)
+            for neighbor in neighbors:
+                if neighbor in susceptible:
+                    skep = graph.nodes.get(neighbor, {}).get("skepticism", 0.45)
+                    step_counter += 1
+                    if skep <= virality:
+                        susceptible.remove(neighbor)
+                        newly_infected.add(neighbor)
+                        step_log.append({
+                            "step_id": step_counter,
+                            "algorithm": "SIR",
+                            "action": "INFECTION_SPREAD",
+                            "current_node": curr,
+                            "neighbor_node": neighbor,
+                            "active_edge": [curr, neighbor],
+                            "queue_state": list(infected | newly_infected),
+                            "stack_state": [],
+                            "susceptible_nodes": list(susceptible),
+                            "infected_nodes": list(infected | newly_infected),
+                            "recovered_nodes": list(recovered),
+                            "time_series": list(time_series),
+                            "explanation": f"Rumor vector '{curr}' -> '{neighbor}' succeeded. '{neighbor}' contracted rumor (S -> I)."
+                        })
+                    else:
+                        step_log.append({
+                            "step_id": step_counter,
+                            "algorithm": "SIR",
+                            "action": "RESISTED_SKEPTIC",
+                            "current_node": curr,
+                            "neighbor_node": neighbor,
+                            "active_edge": [curr, neighbor],
+                            "queue_state": list(infected),
+                            "stack_state": [],
+                            "susceptible_nodes": list(susceptible),
+                            "infected_nodes": list(infected),
+                            "recovered_nodes": list(recovered),
+                            "time_series": list(time_series),
+                            "explanation": f"Entity '{neighbor}' resisted epidemic! Skepticism ({skep:.2f}) > Virality ({virality:.2f})."
+                        })
+
+            if random.random() < recovery_rate:
+                newly_recovered.add(curr)
+
+        for node in newly_recovered:
+            infected.remove(node)
+            recovered.add(node)
+            step_counter += 1
+            step_log.append({
+                "step_id": step_counter,
+                "algorithm": "SIR",
+                "action": "ENTITY_RECOVERED",
+                "current_node": node,
+                "neighbor_node": None,
+                "active_edge": None,
+                "queue_state": list(infected),
+                "stack_state": [],
+                "susceptible_nodes": list(susceptible),
+                "infected_nodes": list(infected),
+                "recovered_nodes": list(recovered),
+                "time_series": list(time_series),
+                "explanation": f"Entity '{node}' ceased sharing rumor. Transitioned to Recovered / Immune (I -> R)."
+            })
+
+        for node in newly_infected:
+            infected.add(node)
+
+        time_series.append({
+            "epoch": epoch,
+            "susceptible": len(susceptible),
+            "infected": len(infected),
+            "recovered": len(recovered)
+        })
+
+    step_counter += 1
+    step_log.append({
+        "step_id": step_counter,
+        "algorithm": "SIR",
+        "action": "EPIDEMIC_EQUILIBRIUM",
+        "current_node": None,
+        "neighbor_node": None,
+        "active_edge": None,
+        "queue_state": [],
+        "stack_state": [],
+        "susceptible_nodes": list(susceptible),
+        "infected_nodes": list(infected),
+        "recovered_nodes": list(recovered),
+        "time_series": list(time_series),
+        "explanation": f"SIR Epidemic Equilibrium reached at Epoch {epoch}. Total Compromised (Ever Infected): {total_nodes - len(susceptible)}/{total_nodes}."
+    })
+
+    return {
+        "algorithm": "SIR",
+        "source": source,
+        "virality": virality,
+        "recovery_rate": recovery_rate,
+        "steps": step_log,
+        "total_steps": len(step_log),
+        "time_series": time_series,
+        "summary": {
+            "total_nodes": total_nodes,
+            "total_edges": graph.get_edge_count(),
+            "infected_count": len(infected),
+            "recovered_count": len(recovered),
+            "susceptible_count": len(susceptible),
+            "ever_infected_count": total_nodes - len(susceptible),
+            "attack_rate": round(((total_nodes - len(susceptible)) / total_nodes * 100), 1) if total_nodes > 0 else 0,
+            "data_structure": "Compartmental Hash Sets (S, I, R)",
+            "time_complexity": "O(epochs * (V + E))",
+            "space_complexity": "O(V)"
+        }
+    }
+
+
+def calculate_optimal_containment(graph: Graph, source: str, budget: int = 2) -> Dict[str, Any]:
+    """AI Auto-Firewall / Optimal Min-Cut Analysis.
+    
+    Identifies high-impact transmission edges and cut vertices whose severing
+    maximally collapses the reachable cascade component from `source`.
+    """
+    source = str(source).strip()
+    if not graph.has_node(source):
+        raise KeyError(f"Source '{source}' not found.")
+
+    def get_reach(g: Graph, src: str) -> Set[str]:
+        visited = set()
+        q = deque([src])
+        visited.add(src)
+        while q:
+            curr = q.popleft()
+            for neighbor in g.get_neighbors(curr):
+                if neighbor not in visited:
+                    visited.add(neighbor)
+                    q.append(neighbor)
+        return visited
+
+    baseline_reach = get_reach(graph, source)
+    baseline_count = len(baseline_reach)
+
+    candidate_edge_cuts = []
+    edges = graph.get_edges()
+
+    for u, v in edges:
+        graph.remove_edge(u, v)
+        new_reach = get_reach(graph, source)
+        graph.add_edge(u, v)
+
+        saved_nodes = baseline_count - len(new_reach)
+        if saved_nodes > 0:
+            candidate_edge_cuts.append({
+                "from": u,
+                "to": v,
+                "saved_count": saved_nodes,
+                "containment_efficiency": round((saved_nodes / max(1, baseline_count) * 100), 1)
+            })
+
+    candidate_edge_cuts.sort(key=lambda x: x["saved_count"], reverse=True)
+
+    candidate_node_cuts = []
+    for node in baseline_reach:
+        if node == source:
+            continue
+        neighbors = list(graph.get_neighbors(node))
+        for nbr in neighbors:
+            graph.remove_edge(node, nbr)
+        new_reach = get_reach(graph, source)
+        for nbr in neighbors:
+            graph.add_edge(node, nbr)
+
+        saved = baseline_count - len(new_reach) - 1
+        if saved > 0:
+            candidate_node_cuts.append({
+                "node": node,
+                "saved_count": saved,
+                "containment_efficiency": round((saved / max(1, baseline_count) * 100), 1)
+            })
+
+    candidate_node_cuts.sort(key=lambda x: x["saved_count"], reverse=True)
+
+    best_edges = candidate_edge_cuts[:budget]
+    best_nodes = candidate_node_cuts[:budget]
+
+    top_advice = ""
+    if best_edges:
+        e = best_edges[0]
+        top_advice = f"Severing vector '{e['from']}' -> '{e['to']}' halts propagation to {e['saved_count']} entities ({e['containment_efficiency']}% network insulation)."
+    elif best_nodes:
+        n = best_nodes[0]
+        top_advice = f"Quarantining node '{n['node']}' protects {n['saved_count']} downstream entities."
+    else:
+        top_advice = "Network is highly redundant; multiple cross-paths exist without single bottlenecks."
+
+    return {
+        "source": source,
+        "baseline_reach_count": baseline_count,
+        "optimal_edge_cuts": best_edges,
+        "optimal_node_cuts": best_nodes,
+        "recommendation": top_advice
+    }
+
+
+def detect_communities(graph: Graph, iterations: int = 10) -> Dict[str, Any]:
+    """Community Detection using fast Label Propagation Algorithm (LPA).
+    
+    Identifies echo-chamber clusters and bridge nodes connecting polarized clusters.
+    """
+    nodes = graph.get_nodes()
+    if not nodes:
+        return {"total_communities": 0, "node_communities": {}, "communities": {}, "bridge_nodes": [], "bridge_edges": []}
+
+    labels = {node: i for i, node in enumerate(nodes)}
+
+    for _ in range(iterations):
+        for node in nodes:
+            neighbors = graph.get_neighbors(node)
+            if not neighbors:
+                continue
+            counts: Dict[int, int] = {}
+            for nbr in neighbors:
+                lbl = labels[nbr]
+                counts[lbl] = counts.get(lbl, 0) + 1
+            max_freq = max(counts.values())
+            best_labels = [l for l, c in counts.items() if c == max_freq]
+            labels[node] = best_labels[0]
+
+    unique_labels = sorted(list(set(labels.values())))
+    label_map = {old: idx + 1 for idx, old in enumerate(unique_labels)}
+    node_communities = {node: label_map[labels[node]] for node in nodes}
+
+    communities: Dict[int, List[str]] = {}
+    for node, c_id in node_communities.items():
+        communities.setdefault(c_id, []).append(node)
+
+    bridge_nodes = []
+    bridge_edges = []
+
+    for node in nodes:
+        my_c = node_communities[node]
+        nbr_communities = {node_communities[nbr] for nbr in graph.get_neighbors(node)}
+        if len(nbr_communities - {my_c}) > 0:
+            bridge_nodes.append({
+                "node": node,
+                "home_community": my_c,
+                "connected_communities": list(nbr_communities)
+            })
+
+    for u, v in graph.get_edges():
+        if node_communities.get(u) != node_communities.get(v):
+            bridge_edges.append([u, v])
+
+    return {
+        "total_communities": len(communities),
+        "node_communities": node_communities,
+        "communities": communities,
+        "bridge_nodes": bridge_nodes,
+        "bridge_edges": bridge_edges
     }

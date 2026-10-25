@@ -2,7 +2,8 @@
  * Main Application Controller for INFOCASCADE.
  * Handles UI interactions, API endpoints, visualization canvas,
  * Dual-Theme toggle, Real-World Case Studies, Complex Network Generators,
- * PageRank Super-Spreader Sizing, AI Virality Slider, and Forensic Dossier Export.
+ * PageRank Super-Spreader Sizing, AI Virality Slider, Forensic Dossier Export,
+ * Community Detection (Echo Chambers), AI Auto-Firewall, and Interactive Node Deep-Inspection.
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -31,12 +32,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const btnTogglePagerank = document.getElementById('btn-toggle-pagerank');
     const btnExportDossier = document.getElementById('btn-export-dossier');
+    const btnDetectCommunities = document.getElementById('btn-detect-communities');
+    const btnToggleSound = document.getElementById('btn-toggle-sound');
+    const soundIcon = document.getElementById('sound-icon');
+    const soundText = document.getElementById('sound-text');
 
     const btnAddNode = document.getElementById('btn-add-node');
     const newNodeInput = document.getElementById('new-node-id');
     const newNodeRole = document.getElementById('new-node-role');
     const btnDeleteNode = document.getElementById('btn-delete-node');
     const btnQuarantineNode = document.getElementById('btn-quarantine-node');
+    const btnAutoContainment = document.getElementById('btn-auto-containment');
 
     const btnAddEdge = document.getElementById('btn-add-edge');
     const edgeFromSelect = document.getElementById('edge-from-select');
@@ -58,10 +64,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnPrintDossier = document.getElementById('btn-print-dossier');
     const btnDownloadJson = document.getElementById('btn-download-json');
 
-    let isPageRankActive = false;
-    let cachedCentrality = null;
+    // Node Inspector Drawer DOM References
+    const inspectorModal = document.getElementById('entity-inspector-modal');
+    const btnCloseInspector = document.getElementById('btn-close-inspector');
+    const inspEntityId = document.getElementById('insp-entity-id');
+    const inspRoleBadge = document.getElementById('insp-role-badge');
+    const inspDegree = document.getElementById('insp-degree');
+    const inspPagerank = document.getElementById('insp-pagerank');
+    const inspRisk = document.getElementById('insp-risk');
+    const inspSkepSlider = document.getElementById('insp-skep-slider');
+    const inspSkepVal = document.getElementById('insp-skep-val');
+    const inspRoleSelect = document.getElementById('insp-role-select');
+    const btnSaveInspector = document.getElementById('btn-save-inspector');
+    const btnInspInfect = document.getElementById('btn-insp-infect');
+    const btnInspInoculate = document.getElementById('btn-insp-inoculate');
+    const btnInspQuarantine = document.getElementById('btn-insp-quarantine');
 
-    // 3. Real-World Case Study Catalog & Generators
+    let isPageRankActive = false;
+    let isCommunityActive = false;
+    let cachedCentrality = null;
+    let cachedCommunities = null;
+    let currentlyInspectedNodeId = null;
+
+    // 3. Real-World Case Study Catalog & Complex Generators
     const caseStudyCatalog = {
         financial_panic: {
             title: "Case 1: Deepfake Financial Market Panic",
@@ -134,7 +159,27 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 5. Helper to populate dropdown menus from current graph
+    // 5. Sound FX Synthesizer Initializer & Toggle
+    function initSoundUI() {
+        if (!window.audioEngine) return;
+        const isMuted = window.audioEngine.isMuted();
+        soundIcon.textContent = isMuted ? '🔇' : '🔊';
+        soundText.textContent = isMuted ? 'Sound: OFF' : 'Sound: ON';
+        btnToggleSound.classList.toggle('active', !isMuted);
+    }
+
+    if (btnToggleSound) {
+        btnToggleSound.addEventListener('click', () => {
+            if (!window.audioEngine) return;
+            const muted = window.audioEngine.toggleMute();
+            soundIcon.textContent = muted ? '🔇' : '🔊';
+            soundText.textContent = muted ? 'Sound: OFF' : 'Sound: ON';
+            btnToggleSound.classList.toggle('active', !muted);
+            if (!muted) window.audioEngine.playClick();
+        });
+    }
+
+    // 6. Helper to populate dropdown menus from current graph
     function refreshNodeSelectors(selectedSource = null) {
         const nodeIds = networkVis.getNodeIds();
         
@@ -185,7 +230,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // 6. Handle Algorithm Mode Switching
+    // 7. Handle Algorithm Mode Switching
     function updateAlgorithmModeUI() {
         const isRace = algorithmSelect.value === 'RACE';
         if (factSourcePod) {
@@ -193,7 +238,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // 7. API Service Call: Fetch Simulation with Virality Parameter
+    // 8. API Service Call: Fetch Simulation (BFS, DFS, SIR, RACE)
     async function requestSimulation() {
         const graphData = networkVis.getGraphData();
         const source = sourceSelect.value;
@@ -243,10 +288,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // 8. Super-Spreader & PageRank Centrality Handler
+    // 9. Super-Spreader & PageRank Centrality Handler
     async function togglePageRankCentrality() {
         isPageRankActive = !isPageRankActive;
         btnTogglePagerank.classList.toggle('active', isPageRankActive);
+        if (window.audioEngine) window.audioEngine.playClick();
 
         if (!isPageRankActive) {
             networkVis.applyPageRankSizing({}, false);
@@ -279,7 +325,170 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // 9. API Service Call: Load Preset Topology & Update Briefing
+    // 10. Community Detection (Echo Chambers) Handler
+    async function toggleCommunityDetection() {
+        isCommunityActive = !isCommunityActive;
+        btnDetectCommunities.classList.toggle('active', isCommunityActive);
+        if (window.audioEngine) window.audioEngine.playClick();
+
+        if (!isCommunityActive) {
+            networkVis.applyCommunityColors(null, false);
+            return;
+        }
+
+        const graphData = networkVis.getGraphData();
+        try {
+            const response = await fetch('/api/analytics/communities', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ graph: graphData })
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                cachedCommunities = data;
+                networkVis.applyCommunityColors(data, true);
+
+                const expl = document.getElementById('step-explanation-text');
+                expl.innerHTML = `<span class="terminal-prefix">&gt;&gt; [COMMUNITY MODULARITY AUDIT]</span> Identified <strong>${data.total_communities} polarized echo chambers</strong>. <strong>${data.bridge_nodes.length} bridge nodes</strong> detected serving as inter-cluster transmission vectors.`;
+            } else {
+                alert(`Community detection failed: ${data.error}`);
+            }
+        } catch (err) {
+            console.error('Community detection error:', err);
+        }
+    }
+
+    // 11. AI Auto-Firewall / Min-Cut Handler
+    async function runAutoContainment() {
+        if (window.audioEngine) window.audioEngine.playClick();
+        const graphData = networkVis.getGraphData();
+        const source = sourceSelect.value;
+
+        if (!source) {
+            alert('Please select an active rumor origin seed first.');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/defense/optimal-cut', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    graph: graphData,
+                    source: source,
+                    budget: 2
+                })
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                const cuts = data.optimal_edge_cuts || [];
+                if (cuts.length === 0) {
+                    alert(`🛡️ AI Auto-Firewall Analysis:\n\n${data.recommendation}`);
+                    return;
+                }
+
+                const topCut = cuts[0];
+                const confirmMsg = `🛡️ AI AUTO-FIREWALL OPTIMAL CONTAINMENT RECOMMENDATION:\n\n${data.recommendation}\n\nSevering transmission vector '${topCut.from}' ➔ '${topCut.to}' immediately prevents diffusion to ${topCut.saved_count} entities.\n\nExecute firewall vector cut now?`;
+                
+                if (confirm(confirmMsg)) {
+                    networkVis.removeEdge(topCut.from, topCut.to);
+                    if (window.audioEngine) window.audioEngine.playShield();
+                    alert(`Vector cut executed! Re-running simulation to observe cascade containment.`);
+                    await requestSimulation();
+                }
+            } else {
+                alert(`Auto-Containment failed: ${data.error}`);
+            }
+        } catch (err) {
+            console.error('Auto containment error:', err);
+        }
+    }
+
+    // 12. Interactive Node Deep-Inspector
+    function openNodeInspector(nodeId) {
+        if (!nodeId) return;
+        currentlyInspectedNodeId = nodeId;
+        if (window.audioEngine) window.audioEngine.playClick();
+
+        const node = networkVis.getNodeData(nodeId);
+        if (!node) return;
+
+        const graphData = networkVis.getGraphData();
+        const connectedEdges = (graphData.edges || []).filter(e => e.from === nodeId || e.to === nodeId);
+        const deg = connectedEdges.length;
+
+        inspEntityId.textContent = nodeId;
+        inspRoleBadge.textContent = (node.role || 'STANDARD USER').toUpperCase();
+        inspRoleSelect.value = node.role || 'Standard User';
+        inspDegree.textContent = deg;
+
+        const skep = node.skepticism !== undefined ? node.skepticism : 0.45;
+        inspSkepSlider.value = Math.round(skep * 100);
+        inspSkepVal.textContent = `${Math.round(skep * 100)}%`;
+
+        let prScore = 0.1;
+        if (cachedCentrality && cachedCentrality.pagerank_scores) {
+            prScore = cachedCentrality.pagerank_scores[nodeId] || 0.1;
+        }
+        inspPagerank.textContent = prScore.toFixed(3);
+        inspRisk.textContent = prScore > 0.7 ? 'HIGH RISK' : (prScore > 0.4 ? 'MEDIUM' : 'LOW');
+        inspRisk.className = `insp-v ${prScore > 0.7 ? 'text-rose' : (prScore > 0.4 ? 'text-amber' : 'text-emerald')}`;
+
+        inspectorModal.style.display = 'flex';
+    }
+
+    function closeNodeInspector() {
+        inspectorModal.style.display = 'none';
+        currentlyInspectedNodeId = null;
+    }
+
+    inspSkepSlider.addEventListener('input', (e) => {
+        inspSkepVal.textContent = `${e.target.value}%`;
+    });
+
+    btnSaveInspector.addEventListener('click', () => {
+        if (!currentlyInspectedNodeId) return;
+        const newSkep = parseFloat(inspSkepSlider.value) / 100.0;
+        const newRole = inspRoleSelect.value;
+
+        networkVis.updateNodeMetadata(currentlyInspectedNodeId, {
+            skepticism: newSkep,
+            role: newRole
+        });
+
+        if (window.audioEngine) window.audioEngine.playTruth();
+        closeNodeInspector();
+        requestSimulation();
+    });
+
+    btnInspInfect.addEventListener('click', () => {
+        if (!currentlyInspectedNodeId) return;
+        networkVis.setNodeState(currentlyInspectedNodeId, 'infected');
+        if (window.audioEngine) window.audioEngine.playInfect();
+        closeNodeInspector();
+    });
+
+    btnInspInoculate.addEventListener('click', () => {
+        if (!currentlyInspectedNodeId) return;
+        networkVis.setNodeState(currentlyInspectedNodeId, 'inoculated');
+        if (window.audioEngine) window.audioEngine.playTruth();
+        closeNodeInspector();
+    });
+
+    btnInspQuarantine.addEventListener('click', () => {
+        if (!currentlyInspectedNodeId) return;
+        networkVis.quarantineNode(currentlyInspectedNodeId);
+        if (window.audioEngine) window.audioEngine.playShield();
+        closeNodeInspector();
+        requestSimulation();
+    });
+
+    if (btnCloseInspector) btnCloseInspector.addEventListener('click', closeNodeInspector);
+    networkVis.setOnNodeClick(nodeId => openNodeInspector(nodeId));
+
+    // 13. API Service Call: Load Preset Topology & Update Briefing
     async function loadPresetTopology(presetId) {
         if (!presetId) return;
 
@@ -296,9 +505,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 refreshNodeSelectors();
                 updateAlgorithmModeUI();
                 if (isPageRankActive) {
-                    await togglePageRankCentrality(); // Refresh PageRank sizes
+                    await togglePageRankCentrality();
                     isPageRankActive = true;
                     btnTogglePagerank.classList.add('active');
+                }
+                if (isCommunityActive) {
+                    await toggleCommunityDetection();
+                    isCommunityActive = true;
+                    btnDetectCommunities.classList.add('active');
                 }
                 await requestSimulation();
             } else {
@@ -309,7 +523,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // 10. API Service Call: Comparative Traversal
+    // 14. API Service Call: Comparative Traversal
     async function runComparison() {
         const graphData = networkVis.getGraphData();
         const source = sourceSelect.value;
@@ -357,7 +571,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // 11. Tab Switching Logic
+    // 15. Tab Switching Logic
     function switchTab(tabId) {
         tabButtons.forEach(btn => {
             btn.classList.toggle('active', btn.dataset.tab === tabId);
@@ -373,7 +587,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // 12. Forensic Intelligence Dossier Export Logic (Feature 4)
+    // 16. Forensic Intelligence Dossier Export Logic
     async function openForensicDossier() {
         if (!simCtrl.lastResult) {
             alert('Please run or load a simulation before generating an incident report.');
@@ -386,7 +600,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const timeStr = now.toLocaleTimeString('en-US', { hour12: false });
         const randId = Math.floor(1000 + Math.random() * 9000);
 
-        // Fill Metadata
         document.getElementById('dossier-timestamp').textContent = `${dateStr} // ${timeStr} UTC`;
         document.getElementById('dossier-id').textContent = `CAS-${randId}-INC`;
         document.getElementById('dossier-case-tag').textContent = `INCIDENT #CAS-${randId}`;
@@ -394,20 +607,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const presetKey = presetSelect.value;
         const caseName = caseStudyCatalog[presetKey] ? caseStudyCatalog[presetKey].title : 'Custom Synthesized Topology';
         document.getElementById('dossier-topology').textContent = caseName;
-        document.getElementById('dossier-algorithm').textContent = sim.algorithm === 'RACE' ? 'Multi-Source Dual Traversal (Truth vs Rumor)' : `${sim.algorithm} (Unidirectional Diffusion)`;
+        document.getElementById('dossier-algorithm').textContent = sim.algorithm === 'RACE' ? 'Multi-Source Dual Traversal (Truth vs Rumor)' : (sim.algorithm === 'SIR' ? 'SIR Epidemic Compartmental Model' : `${sim.algorithm} (Unidirectional Diffusion)`);
         document.getElementById('dossier-source').textContent = sim.source || sim.rumor_source || 'Unknown';
         document.getElementById('dossier-virality').textContent = `${viralitySlider ? viralitySlider.value : 75}% Persuasion Coefficient`;
 
-        // Summary Tiles
         const summary = sim.summary || {};
         document.getElementById('dossier-total-v').textContent = summary.total_nodes || 0;
-        document.getElementById('dossier-compromised-v').textContent = summary.infected_count || 0;
-        document.getElementById('dossier-resisted-v').textContent = summary.resisted_count || 0;
-        document.getElementById('dossier-unreached-v').textContent = summary.unreached_count || 0;
-        document.getElementById('dossier-depth-v').textContent = summary.max_depth || 0;
-        document.getElementById('dossier-reach-v').textContent = `${summary.reach_percentage || 0}%`;
+        document.getElementById('dossier-compromised-v').textContent = summary.infected_count || summary.ever_infected_count || 0;
+        document.getElementById('dossier-resisted-v').textContent = summary.resisted_count || summary.recovered_count || 0;
+        document.getElementById('dossier-unreached-v').textContent = summary.unreached_count || summary.susceptible_count || 0;
+        document.getElementById('dossier-depth-v').textContent = summary.max_depth || summary.total_steps || 0;
+        document.getElementById('dossier-reach-v').textContent = `${summary.reach_percentage || summary.attack_rate || 0}%`;
 
-        // Fetch Centrality for Dossier Ranking Table
         const graphData = networkVis.getGraphData();
         const spreadersTbody = document.getElementById('dossier-spreaders-tbody');
         spreadersTbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Calculating PageRank eigenvalues...</td></tr>';
@@ -440,10 +651,9 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Dossier centrality error:', err);
         }
 
-        // Timeline Table
         const timelineTbody = document.getElementById('dossier-timeline-tbody');
         timelineTbody.innerHTML = '';
-        const displaySteps = (sim.steps || []).slice(0, 30); // Display up to first 30 pivotal steps
+        const displaySteps = (sim.steps || []).slice(0, 30);
         displaySteps.forEach(step => {
             const tr = document.createElement('tr');
             const vec = step.active_edge ? `${step.active_edge[0]} ➔ ${step.active_edge[1]}` : (step.current_node ? step.current_node : 'N/A');
@@ -476,6 +686,7 @@ document.addEventListener('DOMContentLoaded', () => {
             virality_setting: viralitySlider ? viralitySlider.value : 75,
             summary: simCtrl.lastResult.summary,
             super_spreaders: cachedCentrality ? cachedCentrality.all_nodes : [],
+            communities: cachedCommunities ? cachedCommunities.communities : {},
             timeline: simCtrl.lastResult.steps
         };
 
@@ -488,23 +699,12 @@ document.addEventListener('DOMContentLoaded', () => {
         downloadAnchor.remove();
     }
 
-    if (btnExportDossier) {
-        btnExportDossier.addEventListener('click', openForensicDossier);
-    }
+    if (btnExportDossier) btnExportDossier.addEventListener('click', openForensicDossier);
+    if (btnCloseDossier) btnCloseDossier.addEventListener('click', closeForensicDossier);
+    if (btnPrintDossier) btnPrintDossier.addEventListener('click', () => window.print());
+    if (btnDownloadJson) btnDownloadJson.addEventListener('click', downloadIncidentJSON);
 
-    if (btnCloseDossier) {
-        btnCloseDossier.addEventListener('click', closeForensicDossier);
-    }
-
-    if (btnPrintDossier) {
-        btnPrintDossier.addEventListener('click', () => window.print());
-    }
-
-    if (btnDownloadJson) {
-        btnDownloadJson.addEventListener('click', downloadIncidentJSON);
-    }
-
-    // 13. Event Listeners for Controls
+    // 17. Event Listeners for Controls
     btnStart.addEventListener('click', () => simCtrl.play());
     btnPause.addEventListener('click', () => simCtrl.pause());
     btnNext.addEventListener('click', () => simCtrl.stepForward());
@@ -512,9 +712,9 @@ document.addEventListener('DOMContentLoaded', () => {
     btnReset.addEventListener('click', () => simCtrl.reset());
     btnCompare.addEventListener('click', () => runComparison());
 
-    if (btnTogglePagerank) {
-        btnTogglePagerank.addEventListener('click', togglePageRankCentrality);
-    }
+    if (btnTogglePagerank) btnTogglePagerank.addEventListener('click', togglePageRankCentrality);
+    if (btnDetectCommunities) btnDetectCommunities.addEventListener('click', toggleCommunityDetection);
+    if (btnAutoContainment) btnAutoContainment.addEventListener('click', runAutoContainment);
 
     speedSlider.addEventListener('input', (e) => {
         const val = e.target.value;
@@ -547,7 +747,7 @@ document.addEventListener('DOMContentLoaded', () => {
         loadPresetTopology(e.target.value);
     });
 
-    // 14. Graph Editing Listeners
+    // 18. Graph Editing Listeners
     btnAddNode.addEventListener('click', () => {
         const name = (newNodeInput.value || '').trim();
         const role = newNodeRole.value;
@@ -605,7 +805,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 15. Initial Boot: Apply saved theme and load Case 1 (Financial Panic)
+    // 19. Initial Boot
     initTheme();
+    initSoundUI();
     loadPresetTopology('financial_panic');
 });

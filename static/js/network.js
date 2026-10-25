@@ -1,7 +1,8 @@
 /**
  * Network Graph Visualization Manager using Vis.js.
  * Enhanced with Neon-Cyber styling, particle-inspired nodes, and dynamic vectors.
- * Supports dynamic Dark / Light theme switching and PageRank Super-Spreader scaling.
+ * Supports Dark/Light themes, PageRank Sizing, Community Modularity Shading,
+ * and Interactive Node Click Inspection.
  */
 
 class NetworkVisualizer {
@@ -13,7 +14,10 @@ class NetworkVisualizer {
         this.isDirected = false;
         this.currentTheme = 'dark';
         this.isPageRankMode = false;
+        this.isCommunityMode = false;
         this.pageRankScores = {};
+        this.communityData = null;
+        this.onNodeClickCallback = null;
 
         // Color palettes for Dark and Light themes
         this.palettes = {
@@ -42,6 +46,11 @@ class NetworkVisualizer {
                     background: '#d97706',
                     border: '#b45309',
                     highlight: { background: '#f59e0b', border: '#d97706' }
+                },
+                recovered: {
+                    background: '#10b981',
+                    border: '#059669',
+                    highlight: { background: '#34d399', border: '#10b981' }
                 },
                 inoculated: {
                     background: '#00f2fe',
@@ -82,6 +91,11 @@ class NetworkVisualizer {
                     background: '#b45309',
                     border: '#78350f',
                     highlight: { background: '#d97706', border: '#b45309' }
+                },
+                recovered: {
+                    background: '#059669',
+                    border: '#047857',
+                    highlight: { background: '#10b981', border: '#059669' }
                 },
                 inoculated: {
                     background: '#0284c7',
@@ -155,6 +169,20 @@ class NetworkVisualizer {
         };
 
         this.network = new vis.Network(this.container, data, options);
+
+        // Click on node listener
+        this.network.on('click', (params) => {
+            if (params.nodes && params.nodes.length > 0) {
+                const nodeId = params.nodes[0];
+                if (this.onNodeClickCallback) {
+                    this.onNodeClickCallback(nodeId);
+                }
+            }
+        });
+    }
+
+    setOnNodeClick(callback) {
+        this.onNodeClickCallback = callback;
     }
 
     setTheme(themeName) {
@@ -184,6 +212,7 @@ class NetworkVisualizer {
             else if (n.state === 'active') stateColor = this.colors.active;
             else if (n.state === 'infected') stateColor = this.colors.infected;
             else if (n.state === 'resisted') stateColor = this.colors.resisted;
+            else if (n.state === 'recovered') stateColor = this.colors.recovered;
             else if (n.state === 'inoculated') stateColor = this.colors.inoculated;
             else if (n.state === 'debunked') stateColor = this.colors.debunked;
 
@@ -289,6 +318,67 @@ class NetworkVisualizer {
         this.nodesDataSet.update(updates);
     }
 
+    applyCommunityColors(communityData, isEnabled = true) {
+        this.isCommunityMode = isEnabled;
+        this.communityData = communityData;
+
+        const currentNodes = this.nodesDataSet.get();
+        if (!isEnabled || !communityData) {
+            this.resetStyles();
+            return;
+        }
+
+        const palette = [
+            { background: '#0284c7', border: '#0369a1' }, // Blue
+            { background: '#8b5cf6', border: '#6d28d9' }, // Purple
+            { background: '#10b981', border: '#059669' }, // Emerald
+            { background: '#f59e0b', border: '#b45309' }, // Amber
+            { background: '#ec4899', border: '#be185d' }, // Pink
+            { background: '#6366f1', border: '#4338ca' }  // Indigo
+        ];
+
+        const nodeComm = communityData.node_communities || {};
+        const bridgeSet = new Set((communityData.bridge_nodes || []).map(b => b.node));
+
+        const updates = currentNodes.map(n => {
+            const cId = nodeComm[n.id] || 1;
+            const colorObj = palette[(cId - 1) % palette.length];
+            const isBridge = bridgeSet.has(n.id);
+
+            return {
+                id: n.id,
+                color: colorObj,
+                borderWidth: isBridge ? 5 : 2.5,
+                shape: isBridge ? 'diamond' : 'dot',
+                size: isBridge ? 28 : 22,
+                title: isBridge ? `[BRIDGE BOTTLENECK NODE]\nEntity: ${n.id}\nConnects Communities` : `Entity: ${n.id}\nCommunity #${cId}`
+            };
+        });
+        this.nodesDataSet.update(updates);
+    }
+
+    updateNodeMetadata(nodeId, newProps) {
+        if (!nodeId || !this.nodesDataSet.get(nodeId)) return false;
+        const current = this.nodesDataSet.get(nodeId);
+        const skep = newProps.skepticism !== undefined ? newProps.skepticism : current.skepticism;
+        const role = newProps.role !== undefined ? newProps.role : current.role;
+        const label = newProps.label !== undefined ? newProps.label : current.label;
+
+        this.nodesDataSet.update({
+            id: nodeId,
+            label: label,
+            role: role,
+            skepticism: skep,
+            title: `Entity: ${nodeId}\nRole: ${role}\nSkepticism Index: ${Math.round(skep * 100)}%`
+        });
+        return true;
+    }
+
+    getNodeData(nodeId) {
+        if (!nodeId) return null;
+        return this.nodesDataSet.get(nodeId);
+    }
+
     addNode(id, label, role = 'Standard User', skepticism = 0.45) {
         if (!id || this.nodesDataSet.get(id)) return false;
         this.nodesDataSet.add({
@@ -351,6 +441,16 @@ class NetworkVisualizer {
         return true;
     }
 
+    removeEdge(from, to) {
+        const edgeId = `${from}-${to}`;
+        const reverseId = `${to}-${from}`;
+        const e1 = this.edgesDataSet.get(edgeId);
+        const e2 = !this.isDirected ? this.edgesDataSet.get(reverseId) : null;
+        if (e1) this.edgesDataSet.remove(e1.id);
+        if (e2) this.edgesDataSet.remove(e2.id);
+        return e1 || e2;
+    }
+
     setNodeState(nodeId, state) {
         if (!nodeId || !this.colors[state]) return;
         const node = this.nodesDataSet.get(nodeId);
@@ -368,7 +468,9 @@ class NetworkVisualizer {
                 size: activeSize,
                 shadow: state === 'active' || state === 'source' || state === 'infected' ?
                     { enabled: true, color: this.colors[state].background, size: 14 } :
-                    (state === 'resisted' ? { enabled: true, color: '#d97706', size: 12 } : { enabled: true, color: 'rgba(0,0,0,0.5)', size: 8 })
+                    (state === 'resisted' ? { enabled: true, color: '#d97706', size: 12 } :
+                    (state === 'recovered' ? { enabled: true, color: '#10b981', size: 12 } :
+                    { enabled: true, color: 'rgba(0,0,0,0.5)', size: 8 }))
             });
         }
     }
@@ -398,8 +500,10 @@ class NetworkVisualizer {
             return {
                 id: n.id,
                 state: 'unvisited',
+                shape: 'dot',
                 color: this.colors.unvisited,
                 size: baseSize,
+                borderWidth: 2.5,
                 font: { color: this.colors.fontColor },
                 shadow: { enabled: true, color: 'rgba(0,0,0,0.5)', size: 8 }
             };

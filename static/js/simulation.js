@@ -1,7 +1,7 @@
 /**
  * Step-by-Step Simulation Playback Controller.
- * Dual-Wave (Truth vs Rumor) & S-Curve Time-Series Chart.js integration.
- * Handles AI Skepticism resistance state transitions.
+ * Supports BFS, DFS, Multi-Source Race, and SIR Epidemic Diffusion.
+ * Features real-time S-Curve Chart.js and Web Audio API synchronization.
  */
 
 class SimulationController {
@@ -56,7 +56,7 @@ class SimulationController {
                 labels: [0],
                 datasets: [
                     {
-                        label: 'Rumor Infected',
+                        label: 'Rumor Infected (I)',
                         data: [0],
                         borderColor: '#f43f5e',
                         backgroundColor: 'rgba(244, 63, 94, 0.15)',
@@ -66,7 +66,7 @@ class SimulationController {
                         pointRadius: 2
                     },
                     {
-                        label: 'Fact-Check Inoculated',
+                        label: 'Truth / Recovered (R)',
                         data: [0],
                         borderColor: '#00f2fe',
                         backgroundColor: 'rgba(0, 242, 254, 0.12)',
@@ -76,7 +76,7 @@ class SimulationController {
                         pointRadius: 2
                     },
                     {
-                        label: 'Neutralized (Debunked)',
+                        label: 'Debunked / Susceptible (S)',
                         data: [0],
                         borderColor: '#8b5cf6',
                         backgroundColor: 'rgba(139, 92, 246, 0.12)',
@@ -160,8 +160,30 @@ class SimulationController {
         this.stepBadge.textContent = `Step 0 / ${this.steps.length}`;
         this.explanationBox.innerHTML = `<span class="terminal-prefix">&gt;&gt;</span> Dissemination trajectory compiled for <strong>${this.algorithm}</strong> (${this.steps.length} state transitions). Ready to execute.`;
 
-        // Reset Chart
+        // Configure Chart dataset labels for specific algorithm
         if (this.chart) {
+            if (this.algorithm === 'SIR') {
+                this.chart.data.datasets[0].label = 'Infected (I)';
+                this.chart.data.datasets[0].borderColor = '#f43f5e';
+                this.chart.data.datasets[1].label = 'Recovered (R)';
+                this.chart.data.datasets[1].borderColor = '#10b981';
+                this.chart.data.datasets[2].label = 'Susceptible (S)';
+                this.chart.data.datasets[2].borderColor = '#f59e0b';
+            } else if (this.algorithm === 'RACE') {
+                this.chart.data.datasets[0].label = 'Rumor Infected';
+                this.chart.data.datasets[0].borderColor = '#f43f5e';
+                this.chart.data.datasets[1].label = 'Fact Inoculated';
+                this.chart.data.datasets[1].borderColor = '#00f2fe';
+                this.chart.data.datasets[2].label = 'Debunked';
+                this.chart.data.datasets[2].borderColor = '#8b5cf6';
+            } else {
+                this.chart.data.datasets[0].label = 'Compromised Users';
+                this.chart.data.datasets[0].borderColor = '#f43f5e';
+                this.chart.data.datasets[1].label = 'Immune / Resisted';
+                this.chart.data.datasets[1].borderColor = '#f59e0b';
+                this.chart.data.datasets[2].label = 'Unreached';
+                this.chart.data.datasets[2].borderColor = '#64748b';
+            }
             this.chart.data.labels = [0];
             this.chart.data.datasets[0].data = [0];
             this.chart.data.datasets[1].data = [0];
@@ -265,8 +287,12 @@ class SimulationController {
         // 1. Reset network styles
         this.network.resetStyles();
 
-        // 2. Color nodes based on mode (BFS/DFS vs RACE)
-        if (step.algorithm === 'RACE') {
+        // 2. Color nodes based on mode (BFS/DFS vs RACE vs SIR)
+        if (step.algorithm === 'SIR') {
+            (step.infected_nodes || []).forEach(n => this.network.setNodeState(n, 'infected'));
+            (step.recovered_nodes || []).forEach(n => this.network.setNodeState(n, 'recovered'));
+            (step.susceptible_nodes || []).forEach(n => this.network.setNodeState(n, 'unvisited'));
+        } else if (step.algorithm === 'RACE') {
             (step.infected_nodes || []).forEach(n => this.network.setNodeState(n, 'infected'));
             (step.inoculated_nodes || []).forEach(n => this.network.setNodeState(n, 'inoculated'));
             (step.debunked_nodes || []).forEach(n => this.network.setNodeState(n, 'debunked'));
@@ -275,7 +301,7 @@ class SimulationController {
             (step.resisted_nodes || []).forEach(n => this.network.setNodeState(n, 'resisted'));
         }
 
-        // Always highlight primary rumor source
+        // Highlight primary rumor source
         if (this.source) this.network.setNodeState(this.source, 'source');
         if (this.factSource && step.algorithm === 'RACE') {
             this.network.setNodeState(this.factSource, 'inoculated');
@@ -285,7 +311,7 @@ class SimulationController {
         if (step.current_node) {
             this.network.setNodeState(step.current_node, 'active');
         }
-        if (step.neighbor_node && (step.action === 'DISCOVER_NEW' || step.action === 'RUMOR_SPREAD')) {
+        if (step.neighbor_node && (step.action === 'DISCOVER_NEW' || step.action === 'RUMOR_SPREAD' || step.action === 'INFECTION_SPREAD')) {
             this.network.setNodeState(step.neighbor_node, 'active');
         }
         if (step.neighbor_node && step.action === 'RESISTED_SKEPTIC') {
@@ -297,16 +323,45 @@ class SimulationController {
             this.network.setActiveEdge(step.active_edge[0], step.active_edge[1]);
         }
 
+        // Trigger Audio Effects
+        if (window.audioEngine) {
+            if (step.action === 'DISCOVER_NEW' || step.action === 'INFECTION_SPREAD' || step.action === 'RUMOR_SPREAD') {
+                window.audioEngine.playInfect();
+            } else if (step.action === 'INOCULATE_NEW' || step.action === 'DEBUNK_INFECTED') {
+                window.audioEngine.playTruth();
+            } else if (step.action === 'RESISTED_SKEPTIC') {
+                window.audioEngine.playShield();
+            } else if (step.action === 'ENTITY_RECOVERED') {
+                window.audioEngine.playRecover();
+            }
+        }
+
         // 3. Update Memory Buffer Inspector
         if (step.algorithm === 'BFS' || step.algorithm === 'RACE') {
             this.dsVis.render('BFS', step.queue_state);
-        } else {
+        } else if (step.algorithm === 'DFS') {
             this.dsVis.render('DFS', step.stack_state);
+        } else {
+            // SIR Compartment register
+            this.dsVis.render('BFS', step.infected_nodes || []);
         }
 
         // 4. Update Statistics Counters
         const stats = step.stats || {};
-        if (step.algorithm === 'RACE') {
+        if (step.algorithm === 'SIR') {
+            const infCount = (step.infected_nodes || []).length;
+            const recCount = (step.recovered_nodes || []).length;
+            const susCount = (step.susceptible_nodes || []).length;
+            const total = parseInt(this.statTotalNodes.textContent, 10) || 1;
+
+            this.statReached.textContent = infCount;
+            if (this.statResisted) this.statResisted.textContent = recCount; // Recovered in Resisted card
+            this.statUnreached.textContent = susCount;
+
+            const reachPct = Math.round(((total - susCount) / total) * 100);
+            this.progressBar.style.width = `${reachPct}%`;
+            this.reachPctLabel.textContent = `${reachPct}%`;
+        } else if (step.algorithm === 'RACE') {
             const infCount = (step.infected_nodes || []).length;
             const inocCount = (step.inoculated_nodes || []).length;
             const debCount = (step.debunked_nodes || []).length;
@@ -348,21 +403,21 @@ class SimulationController {
 
         // 6. Update S-Curve Chart.js
         if (this.chart) {
-            if (step.time_series && step.time_series.length > 0) {
-                const labels = step.time_series.map((_, i) => i);
-                const rumorData = step.time_series.map(pt => pt.rumor_count);
-                const factData = step.time_series.map(pt => pt.fact_count);
-                const debunkData = step.time_series.map(pt => pt.debunked_count);
-
-                this.chart.data.labels = labels;
-                this.chart.data.datasets[0].data = rumorData;
-                this.chart.data.datasets[1].data = factData;
-                this.chart.data.datasets[2].data = debunkData;
+            if (step.algorithm === 'SIR' && step.time_series && step.time_series.length > 0) {
+                this.chart.data.labels = step.time_series.map(pt => `Ep ${pt.epoch}`);
+                this.chart.data.datasets[0].data = step.time_series.map(pt => pt.infected);
+                this.chart.data.datasets[1].data = step.time_series.map(pt => pt.recovered);
+                this.chart.data.datasets[2].data = step.time_series.map(pt => pt.susceptible);
+            } else if (step.algorithm === 'RACE' && step.time_series && step.time_series.length > 0) {
+                this.chart.data.labels = step.time_series.map((_, i) => i);
+                this.chart.data.datasets[0].data = step.time_series.map(pt => pt.rumor_count);
+                this.chart.data.datasets[1].data = step.time_series.map(pt => pt.fact_count);
+                this.chart.data.datasets[2].data = step.time_series.map(pt => pt.debunked_count);
             } else {
                 const currentVisited = (step.visited_nodes || []).length;
                 this.chart.data.labels.push(this.currentStepIndex + 1);
                 this.chart.data.datasets[0].data.push(currentVisited);
-                this.chart.data.datasets[1].data.push(0);
+                this.chart.data.datasets[1].data.push((step.resisted_nodes || []).length);
                 this.chart.data.datasets[2].data.push(0);
             }
             this.chart.update('none');

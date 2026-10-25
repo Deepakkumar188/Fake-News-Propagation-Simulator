@@ -1,7 +1,8 @@
 """Flask Application Server for the Fake News Propagation Simulator.
 
-Exposes RESTful endpoints for graph manipulation, algorithmic simulations (BFS/DFS),
-dual-wave rumor vs truth race, super-spreader centrality analytics, and comparative traversal analysis.
+Exposes RESTful endpoints for graph manipulation, algorithmic simulations (BFS/DFS/SIR),
+dual-wave rumor vs truth race, super-spreader centrality analytics, automated firewall containment,
+community detection, and comparative traversal analysis.
 """
 
 import os
@@ -10,9 +11,12 @@ from core.graph import Graph
 from core.algorithms import (
     simulate_bfs,
     simulate_dfs,
+    simulate_sir,
     compare_algorithms,
     simulate_race,
-    compute_centrality
+    compute_centrality,
+    calculate_optimal_containment,
+    detect_communities
 )
 from core.presets import get_preset_network, list_preset_metadata
 
@@ -50,13 +54,13 @@ def load_preset(preset_id):
 
 @app.route("/api/simulate", methods=["POST"])
 def simulate():
-    """Run BFS or DFS on the client-provided graph and return step log.
+    """Run BFS, DFS, or SIR on the client-provided graph and return step log.
     
     Expected JSON Payload:
         {
             "graph": { "nodes": [...], "edges": [...], "is_directed": bool },
             "source": "Alice",
-            "algorithm": "BFS" | "DFS",
+            "algorithm": "BFS" | "DFS" | "SIR",
             "virality": 0.75
         }
     """
@@ -88,8 +92,10 @@ def simulate():
             result = simulate_bfs(graph, source, virality=virality)
         elif algorithm == "DFS":
             result = simulate_dfs(graph, source, virality=virality)
+        elif algorithm == "SIR":
+            result = simulate_sir(graph, source, virality=virality)
         else:
-            return jsonify({"error": f"Unsupported algorithm '{algorithm}'. Must be BFS or DFS."}), 400
+            return jsonify({"error": f"Unsupported algorithm '{algorithm}'. Must be BFS, DFS, or SIR."}), 400
 
         return jsonify(result)
 
@@ -142,16 +148,53 @@ def analyze_centrality():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/defense/optimal-cut", methods=["POST"])
+def analyze_optimal_cut():
+    """Calculate the most impactful edge/node cuts to prevent viral diffusion from source."""
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No JSON payload provided."}), 400
+
+    graph_data = data.get("graph")
+    source = data.get("source")
+    budget = int(data.get("budget", 2))
+
+    if not graph_data or not graph_data.get("nodes"):
+        return jsonify({"error": "Graph cannot be empty."}), 400
+
+    if not source:
+        return jsonify({"error": "Please provide a rumor source."}), 400
+
+    try:
+        graph = Graph.from_dict(graph_data)
+        cuts = calculate_optimal_containment(graph, source, budget=budget)
+        return jsonify(cuts)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/analytics/communities", methods=["POST"])
+def analyze_communities():
+    """Detect echo-chamber communities and bridge nodes connecting them."""
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No JSON payload provided."}), 400
+
+    graph_data = data.get("graph", data)
+    if not graph_data or not graph_data.get("nodes"):
+        return jsonify({"error": "Graph cannot be empty."}), 400
+
+    try:
+        graph = Graph.from_dict(graph_data)
+        res = detect_communities(graph)
+        return jsonify(res)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/compare", methods=["POST"])
 def compare():
-    """Run both BFS and DFS side-by-side on the provided graph and return comparisons.
-    
-    Expected JSON Payload:
-        {
-            "graph": { "nodes": [...], "edges": [...], "is_directed": bool },
-            "source": "Alice"
-        }
-    """
+    """Run both BFS and DFS side-by-side on the provided graph and return comparisons."""
     data = request.get_json()
     if not data:
         return jsonify({"error": "No JSON payload provided."}), 400

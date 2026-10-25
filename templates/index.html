@@ -35,7 +35,7 @@
                 <div class="brand-text">
                     <div class="brand-name-row">
                         <span class="brand-name">INFOCASCADE</span>
-                        <span class="brand-version">v2.8 ENTERPRISE</span>
+                        <span class="brand-version">v2.9 ENTERPRISE</span>
                     </div>
                     <p class="brand-tagline">Real-Time Social Network Misinformation Diffusion &amp; Defense Simulator</p>
                 </div>
@@ -46,7 +46,7 @@
                 <div class="system-telemetry-tags">
                     <div class="sys-tag">
                         <span class="tag-label">ENGINE</span>
-                        <span class="tag-val text-cyan">Multi-Source BFS / DFS</span>
+                        <span class="tag-val text-cyan">BFS / DFS / SIR</span>
                     </div>
                     <div class="sys-tag">
                         <span class="tag-label">TOPOLOGY</span>
@@ -58,6 +58,12 @@
                     </div>
                 </div>
 
+                <!-- Echo Chambers (Community Detection) Toggle -->
+                <button id="btn-detect-communities" class="theme-switch-btn btn-community-toggle" title="Echo-Chamber Clusters &amp; Bridge Bottlenecks (LPA)">
+                    <span class="theme-icon">🧩</span>
+                    <span class="theme-text">Echo Chambers</span>
+                </button>
+
                 <!-- Super-Spreader Highlight Toggle -->
                 <button id="btn-toggle-pagerank" class="theme-switch-btn btn-spreader-toggle" title="Super-Spreader Analysis (PageRank & Degree Centrality)">
                     <span class="theme-icon">👑</span>
@@ -68,6 +74,12 @@
                 <button id="btn-export-dossier" class="theme-switch-btn btn-export-highlight" title="Export Forensic Dossier (Printable Audit Report)">
                     <span class="theme-icon">📄</span>
                     <span class="theme-text">Forensic Dossier</span>
+                </button>
+
+                <!-- Sound FX Synthesizer Toggle -->
+                <button id="btn-toggle-sound" class="theme-switch-btn" title="Toggle Synthesizer Audio Telemetry">
+                    <span class="theme-icon" id="sound-icon">🔊</span>
+                    <span class="theme-text" id="sound-text">Sound: ON</span>
                 </button>
 
                 <!-- Theme Switcher Button (Dark / Light Mode) -->
@@ -101,6 +113,7 @@
                             <option value="BFS" selected>BFS // Wavefront Broadcast (Queue)</option>
                             <option value="DFS">DFS // Targeted Whisper Chain (Stack)</option>
                             <option value="RACE">⚔️ Truth vs. Rumor Race (Multi-Source)</option>
+                            <option value="SIR">🔬 SIR Epidemic Model (Infection &amp; Recovery)</option>
                         </select>
                     </div>
                 </div>
@@ -150,7 +163,7 @@
                     </div>
                 </div>
 
-                <!-- Rumor Persuasiveness / Virality Slider (Feature 2) -->
+                <!-- Rumor Persuasiveness / Virality Slider -->
                 <div class="control-pod virality-pod">
                     <div class="speed-header">
                         <label class="pod-label" for="virality-slider">
@@ -210,6 +223,7 @@
                         <div class="title-with-beacon">
                             <span class="beacon-pulse"></span>
                             <span class="panel-heading">Interactive Network Topology</span>
+                            <span class="click-hint-badge">💡 Click any entity to inspect &amp; edit</span>
                         </div>
                         <div class="canvas-legend">
                             <div class="legend-chip"><span class="chip-color color-source"></span> Rumor Seed</div>
@@ -217,6 +231,7 @@
                             <div class="legend-chip"><span class="chip-color color-infected"></span> Infected</div>
                             <div class="legend-chip"><span class="chip-color color-resisted"></span> Resisted (Skeptic)</div>
                             <div class="legend-chip"><span class="chip-color color-inoculated"></span> Inoculated (Truth)</div>
+                            <div class="legend-chip"><span class="chip-color color-recovered"></span> Recovered (Immune)</div>
                             <div class="legend-chip"><span class="chip-color color-debunked"></span> Debunked</div>
                             <div class="legend-chip"><span class="chip-color color-unvisited"></span> Unreached</div>
                         </div>
@@ -248,6 +263,7 @@
                             <span class="dock-arrow">➔</span>
                             <select id="edge-to-select" class="dock-select"></select>
                             <button id="btn-add-edge" class="dock-btn dock-btn-cyan">+ Link</button>
+                            <button id="btn-auto-containment" class="dock-btn dock-btn-warning" title="AI Auto-Firewall: Calculate optimal min-cut bottleneck vectors">🛡️ AI Auto-Firewall</button>
                             <button id="btn-quarantine-node" class="dock-btn dock-btn-warning" title="Isolate selected entity to cut transmission vector">⚠️ Quarantine</button>
                             <button id="btn-delete-node" class="dock-btn dock-btn-danger" title="Remove selected node">Remove</button>
                         </div>
@@ -340,11 +356,11 @@
                                 </div>
                                 <div class="stat-card glow-card-infected">
                                     <div class="stat-num text-rose" id="stat-reached-nodes">0</div>
-                                    <div class="stat-desc">Infected</div>
+                                    <div class="stat-desc">Infected (I)</div>
                                 </div>
                                 <div class="stat-card glow-card-resisted">
                                     <div class="stat-num text-amber" id="stat-resisted-nodes">0</div>
-                                    <div class="stat-desc">Resisted (Skeptic)</div>
+                                    <div class="stat-desc">Resisted / Rec (R)</div>
                                 </div>
                                 <div class="stat-card glow-card-inoculated">
                                     <div class="stat-num text-cyan" id="stat-inoculated-nodes">0</div>
@@ -356,7 +372,7 @@
                                 </div>
                                 <div class="stat-card">
                                     <div class="stat-num text-emerald" id="stat-unreached-nodes">0</div>
-                                    <div class="stat-desc">Immune / Safe</div>
+                                    <div class="stat-desc">Immune / Safe (S)</div>
                                 </div>
                             </div>
 
@@ -448,53 +464,34 @@
                                     <span>Space Footprint: &Omicron;(V + E)</span> &bull; 
                                     <span>Neighbor Iteration: &Omicron;(deg(u))</span>
                                 </div>
-                                <p>
-                                    By using an Adjacency List rather than a dense $V \times V$ matrix, memory consumption is minimized 
-                                    and disconnected communities are tracked without wasting allocations on null vectors.
-                                </p>
                             </section>
 
                             <section class="theory-card">
                                 <h4>2. Breadth-First Diffusion (Radial Broadcast)</h4>
                                 <p>
-                                    BFS processes information in concentric hop frontiers. An entity at hop distance $k$ 
-                                    receives the transmission before any entity at distance $k + 1$.
+                                    BFS processes information in concentric hop frontiers. Guaranteed to discover the shortest hop-path from Patient Zero in $\mathcal{O}(V + E)$ time using a FIFO Queue buffer.
                                 </p>
-                                <ul>
-                                    <li><strong>Computational Complexity:</strong> &Omicron;(V + E) deterministic traversal time.</li>
-                                    <li><strong>FIFO Queue Buffer:</strong> Maintains chronological discovery order without priority recalculation.</li>
-                                    <li><strong>Minimum Hop Optimality:</strong> Guaranteed to discover the shortest hop-path from Patient Zero.</li>
-                                </ul>
                             </section>
 
                             <section class="theory-card">
                                 <h4>3. Depth-First Diffusion (Penetrative Chain)</h4>
                                 <p>
                                     DFS models high-velocity personal cascades where information travels sequentially down 
-                                    a single chain of forwarders until encountering an infected node or dead end, subsequently backtracking.
-                                </p>
-                                <ul>
-                                    <li><strong>Computational Complexity:</strong> &Omicron;(V + E) traversal time.</li>
-                                    <li><strong>LIFO Stack Buffer:</strong> Prioritizes downstream depth over lateral exploration.</li>
-                                    <li><strong>Loop Immunity:</strong> Visited set prevents infinite forwarding loops along cyclic social rings.</li>
-                                </ul>
-                            </section>
-
-                            <section class="theory-card">
-                                <h4>4. Multi-Source Defense (Truth vs. Rumor Race)</h4>
-                                <p>
-                                    Simultaneous multi-source traversal models information containment. When authoritative verification nodes 
-                                    broadcast counter-evidence, their wavefront inoculates uninfected nodes and neutralizes infected ones, 
-                                    halting the viral cascade before critical saturation is reached.
+                                    a single chain of forwarders before backtracking via a LIFO Stack buffer.
                                 </p>
                             </section>
 
                             <section class="theory-card">
-                                <h4>5. Super-Spreader PageRank &amp; Preferential Attachment</h4>
+                                <h4>4. SIR Epidemic Model (Compartmental Diffusion)</h4>
                                 <p>
-                                    The PageRank algorithm models influence via random walks with restart probability $\alpha = 0.85$.
-                                    In Barabási-Albert scale-free networks, preferential attachment produces hub entities that serve as super-spreaders, 
-                                    enabling rumors to achieve epidemic threshold significantly faster.
+                                    Models infection and loss of interest: $S \to I \to R$. Entities transition from Susceptible ($S$) to Infected ($I$) if skepticism &le; virality, and subsequently transition to Recovered/Immune ($R$) based on recovery probability $\gamma$.
+                                </p>
+                            </section>
+
+                            <section class="theory-card">
+                                <h4>5. Community Modularity &amp; Bridge Bottlenecks</h4>
+                                <p>
+                                    Echo chambers form dense internal clusters with sparse external connections. Label Propagation Algorithm (LPA) detects these clusters; bridge nodes serve as critical bottlenecks where information crosses partisan divides.
                                 </p>
                             </section>
                         </div>
@@ -502,6 +499,69 @@
                 </div>
             </aside>
         </main>
+    </div>
+
+    <!-- INTERACTIVE ENTITY INTEL DRAWER (MODAL) -->
+    <div id="entity-inspector-modal" class="inspector-modal-backdrop" style="display: none;">
+        <div class="inspector-card">
+            <div class="inspector-header">
+                <div class="inspector-title-group">
+                    <span class="inspector-badge" id="insp-role-badge">STANDARD USER</span>
+                    <h3 class="inspector-entity-name" id="insp-entity-id">Entity_Name</h3>
+                </div>
+                <button id="btn-close-inspector" class="inspector-close-btn">&times;</button>
+            </div>
+            
+            <div class="inspector-body">
+                <!-- Centrality & Connectivity Metrics -->
+                <div class="inspector-metrics-row">
+                    <div class="insp-stat">
+                        <span class="insp-k">TOTAL DEGREE</span>
+                        <span class="insp-v text-cyan" id="insp-degree">0</span>
+                    </div>
+                    <div class="insp-stat">
+                        <span class="insp-k">PAGERANK</span>
+                        <span class="insp-v text-amber" id="insp-pagerank">0.00</span>
+                    </div>
+                    <div class="insp-stat">
+                        <span class="insp-k">CASCADE RISK</span>
+                        <span class="insp-v text-rose" id="insp-risk">LOW</span>
+                    </div>
+                </div>
+
+                <!-- Live Skepticism Slider Tuning -->
+                <div class="insp-control-group">
+                    <div class="insp-label-row">
+                        <label for="insp-skep-slider" class="insp-label">AI Skepticism Index (Resistance)</label>
+                        <span id="insp-skep-val" class="insp-slider-readout text-amber">45%</span>
+                    </div>
+                    <input type="range" id="insp-skep-slider" min="0" max="100" step="5" value="45" class="neon-slider slider-amber">
+                </div>
+
+                <!-- Role Selection -->
+                <div class="insp-control-group">
+                    <label for="insp-role-select" class="insp-label">Network Social Role</label>
+                    <select id="insp-role-select" class="dock-select custom-select">
+                        <option value="Standard User">Standard Account</option>
+                        <option value="Influencer">Influencer / Super-Spreader</option>
+                        <option value="Journalist">Journalist / Media</option>
+                        <option value="Fact Checker">Fact-Checking Authority</option>
+                        <option value="Bot">Automated Disinformation Bot</option>
+                    </select>
+                </div>
+
+                <!-- Interactive One-Click Tactical Interventions -->
+                <div class="insp-actions-group">
+                    <button id="btn-insp-infect" class="dock-btn dock-btn-danger">☣️ Force Infect</button>
+                    <button id="btn-insp-inoculate" class="dock-btn dock-btn-cyan">🛡️ Inoculate (Vaccinate)</button>
+                    <button id="btn-insp-quarantine" class="dock-btn dock-btn-warning">⚠️ Sever Vectors</button>
+                </div>
+            </div>
+
+            <div class="inspector-footer">
+                <button id="btn-save-inspector" class="ctrl-btn btn-glow-primary">Apply Entity Updates</button>
+            </div>
+        </div>
     </div>
 
     <!-- FORENSIC INTELLIGENCE REPORT MODAL -->
@@ -631,6 +691,7 @@
     </div>
 
     <!-- SCRIPTS -->
+    <script src="/static/js/audio.js"></script>
     <script src="/static/js/network.js"></script>
     <script src="/static/js/data_structures.js"></script>
     <script src="/static/js/simulation.js"></script>
